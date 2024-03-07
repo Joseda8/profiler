@@ -4,3 +4,8 @@
 # Ignore any other temporary files, such as .pyc files
 __pycache__/
 *.pyc
+*.pyo
+myenv/
+
+# Execptions
+!requirements.txt

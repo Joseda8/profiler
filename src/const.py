@@ -1,1 +1,2 @@
-OUTPUT_FILE_PATH = "results"
+OUTPUT_FILE_FOLDER = "results"
+OUTPUT_FILE_PATH = f"{OUTPUT_FILE_FOLDER}/output.txt"
