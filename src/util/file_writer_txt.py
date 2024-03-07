@@ -1,7 +1,7 @@
 import os
 
 
-class FileWriter:
+class FileWriterTxt:
     """
     A class for writing text to a file, creating the file and directory if they don't exist.
     """
