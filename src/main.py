@@ -31,11 +31,9 @@ logger.info(f"PID of the command: {pid}")
 profiler_measurer = SystemStatsCollector(pid=pid)
 file_stats = FileWriterCsv(file_path=STATS_FILE_PATH, columns=name_stats_csv)
 while process.poll() is None:
-    # Get general CPU usage
+    # Collect stats
     cpu_usage = profiler_measurer.get_cpu_usage()
-    # Get CPU usage per core
     cpu_usage_per_core = SystemStatsCollector.get_cpu_usage_per_core()
-    # Get memory usage
     memory_usage = profiler_measurer.get_ram_usage()
 
     # Append new stats if they were successfully collected
@@ -46,6 +44,7 @@ while process.poll() is None:
 
 # Write profiling results file
 file_stats.write_to_csv()
+logger.info(f"Profiling results saved to: {STATS_FILE_PATH}")
 
 # Get and write the output of the subprocess once it finishes
 output, error = process.communicate()
