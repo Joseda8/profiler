@@ -1,15 +1,13 @@
-# Ignore files produced by the progrma
+# Ignore files produced by the program
 *.txt
 *.csv
+*.json
 
 # Ignore any other temporary files, such as .pyc files
 __pycache__/
 *.pyc
 *.pyo
 myenv/
-
-# Ignore testing data
-testing_data/*.json
 
 # Exceptions
 !requirements.txt
