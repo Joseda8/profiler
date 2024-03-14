@@ -70,4 +70,4 @@ def setup_logging(level="INFO"):
     return logger
 
 # Initialize the logger
-logger = setup_logging(level="DEBUG")
+logger = setup_logging(level="INFO")

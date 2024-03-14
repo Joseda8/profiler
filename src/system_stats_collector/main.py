@@ -1,7 +1,9 @@
 from typing import List, Optional, Tuple
-import psutil
-from src.util import logger
 
+import psutil
+
+from src.util import DatetimeHelper
+from src.util import logger
 
 class SystemStatsCollector:
     """
@@ -17,6 +19,19 @@ class SystemStatsCollector:
         """
         self._pid = pid
 
+    @staticmethod
+    def get_values_to_measure() -> List[str]:
+        """
+        Get the name of the values that the profiler is able to return.
+
+        TODO: This should check the OS in which is running.
+
+        Returns:
+            values_to_measure: Name of the values to measure.
+        """
+        values_to_measure = ["uptime", "cpu_usage"] + [f"core_{i+1}_usage" for i in range(SystemStatsCollector.get_cpu_count())] + ["virtual_memory_usage", "ram_usage", "swap_usage"]
+        return values_to_measure
+    
     def get_cpu_usage(self) -> float:
         """
         Get the CPU usage of the process specified by the PID.
@@ -85,15 +100,18 @@ class SystemStatsCollector:
         """
         return psutil.cpu_count()
 
-    @staticmethod
-    def get_values_to_measure() -> List[str]:
+    def get_process_create_time(self) -> Optional[float]:
         """
-        Get the name of the values that the profiler is able to return.
-
-        TODO: This should check the OS in which is running.
+        Get the uptime (seconds) of the process specified by the PID.
 
         Returns:
-            values_to_measure: Name of the values to measure.
+            datetime.timedelta: Uptime of the process.
+                                Returns None if the process with the given PID does not exist.
         """
-        values_to_measure = ["cpu_usage"] + [f"core_{i+1}_usage" for i in range(SystemStatsCollector.get_cpu_count())] + ["virtual_memory_usage", "ram_usage", "swap_usage"]
-        return values_to_measure
+        try:
+            process = psutil.Process(self._pid)
+            create_time = process.create_time()
+            return create_time
+        except psutil.NoSuchProcess:
+            logger.error(f"Process with PID {self._pid} does not exist.")
+            return None
