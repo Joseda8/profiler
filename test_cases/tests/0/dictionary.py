@@ -9,8 +9,9 @@ Benchmark Steps:
 
 import argparse
 import time
+import os
 
-from src.client_interface import set_tag
+from src.client_interface import set_tag, set_output_filename
 
 from ...util import logger
 from ...data_provider import DataHandler
@@ -20,6 +21,10 @@ from ...data_provider import DataHandler
 parser = argparse.ArgumentParser(description="Perform a test.")
 parser.add_argument("--num_records", required=True, type=int, help="Number of records to process")
 args = parser.parse_args()
+num_records = args.num_records
+
+# Set output filename
+set_output_filename(filename=f"{os.path.splitext(os.path.basename(__file__))[0]}_{num_records}")
 
 # Idle time to ensure that the whole program is profiled
 time.sleep(1)

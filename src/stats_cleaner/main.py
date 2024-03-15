@@ -1,6 +1,6 @@
 from typing import Dict, List, Tuple
 import csv
-from src.const import PREFIX_MEASURE_TAG
+from src.const import PREFIX_MEASURE_TAG, PREFIX_MEASURE_TAG_FILE_NAME
 from src.util import FileWriterCsv
 
 
@@ -25,6 +25,8 @@ class StatsCleaner:
         self._rows_stats: List[Dict] = []
         # List to store columns of the CSV file
         self._file_columns: List[str] = []
+        # Output CSV file after processing
+        self._output_csv_path: str = None
 
     def _read_output_file(self) -> None:
         """
@@ -33,7 +35,12 @@ class StatsCleaner:
         """
         with open(self._output_file, "r") as file:
             for line in file:
-                if line.startswith(PREFIX_MEASURE_TAG):
+                if line.startswith(PREFIX_MEASURE_TAG_FILE_NAME):
+                    # Split each line by colon and whitespace
+                    label, filename = line.strip().split(": ")
+                    self._output_csv_path = filename
+                
+                elif line.startswith(PREFIX_MEASURE_TAG):
                     # Split each line by colon and whitespace
                     label, timestamp = line.strip().split(": ")
                     label = label.replace(PREFIX_MEASURE_TAG, "")
@@ -96,6 +103,11 @@ class StatsCleaner:
 
         # Convert uptime column to seconds from the start of the program
         self._update_uptime(process_creation_time=process_creation_time)
+
+        # Add possible filename prefix to the output CSV
+        output_csv_path_split = output_csv_path.split("/")
+        file_name = f"{self._output_csv_path}_{output_csv_path_split[-1]}" if self._output_csv_path else output_csv_path_split[-1]
+        output_csv_path = "/".join(output_csv_path_split[:-1] + [file_name])
 
         # Write the sorted rows to a CSV file using FileWriterCsv
         self._rows_stats = sorted(self._rows_stats, key=lambda row: float(row["uptime"]))
