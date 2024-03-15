@@ -10,8 +10,11 @@ Benchmark Steps:
 import argparse
 import time
 
-from ...util import logger, DatetimeHelper
+from src.client_interface import set_tag
+
+from ...util import logger
 from ...data_provider import DataHandler
+
 
 # Use argparse to get num_records from the terminal
 parser = argparse.ArgumentParser(description="Perform a test.")
@@ -20,25 +23,25 @@ args = parser.parse_args()
 
 # Idle time to ensure that the whole program is profiled
 time.sleep(1)
-print(f"measure_label-start_program: {DatetimeHelper.current_datetime(from_the_epoch=True)}")
+set_tag("start_program")
 
 #------- Extract data
 data_handler = DataHandler()
 num_records = args.num_records
 
-print(f"measure_label-start_reading: {DatetimeHelper.current_datetime(from_the_epoch=True)}")
+set_tag("start_reading")
 df_users = data_handler.read_data(num_records=num_records, data_type="csv")
-print(f"measure_label-finish_reading: {DatetimeHelper.current_datetime(from_the_epoch=True)}")
+set_tag("finish_reading")
 logger.info(f"The required information was loaded successfully. Number of records: {len(df_users)}")
 
 #------- Operation
-print(f"measure_label-start_processing: {DatetimeHelper.current_datetime(from_the_epoch=True)}")
+set_tag("start_processing")
 
 # Replace all values in the "password" column with "XXXXXXXX" in the DataFrame
 df_users["password"] = "XXXXXXXX"
 
-print(f"measure_label-finish_processing: {DatetimeHelper.current_datetime(from_the_epoch=True)}")
+set_tag("finish_processing")
 
 # Idle time to ensure some last measures are taken
-print(f"measure_label-finish_program: {DatetimeHelper.current_datetime(from_the_epoch=True)}")
+set_tag("finish_program")
 time.sleep(1)
