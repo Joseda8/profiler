@@ -5,6 +5,7 @@ import psutil
 from src.util import DatetimeHelper
 from src.util import logger
 
+
 class SystemStatsCollector:
     """
     A class for measuring system resources for a given process.

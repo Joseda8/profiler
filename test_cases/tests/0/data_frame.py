@@ -40,5 +40,5 @@ df_users["password"] = "XXXXXXXX"
 print(f"measure_label-finish_processing: {DatetimeHelper.current_datetime(from_the_epoch=True)}")
 
 # Idle time to ensure some last measures are taken
-time.sleep(1)
 print(f"measure_label-finish_program: {DatetimeHelper.current_datetime(from_the_epoch=True)}")
+time.sleep(1)
