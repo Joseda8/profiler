@@ -1,9 +1,9 @@
 """
-This benchmark <content>.
+This benchmark replaces all values in the "password" key with "XXXXXXXX" in a dictionary.
 
 Benchmark Steps:
-1. Load user data into a <structure> with a specified number of records.
-2. <Description>
+1. Load user data into a dictionary with a specified number of records.
+2. Replace all values in the "password" key with "XXXXXXXX".
 3. Measure and log the execution time for the operation.
 """
 
@@ -30,16 +30,16 @@ data_handler = DataHandler()
 num_records = args.num_records
 
 set_tag("start_reading")
-df_users = data_handler.read_data(num_records=num_records, data_type="csv")
+dict_users = data_handler.read_data(num_records=num_records, data_type="json")
 set_tag("finish_reading")
-logger.info(f"The required information was loaded successfully. Number of records: {len(df_users)}")
+logger.info(f"The required information was loaded successfully. Number of records: {len(dict_users)}")
 
 #------- Operation
 set_tag("start_processing")
 
-##########
-#  Code  #
-##########
+# Replace all values in the "password" key with "XXXXXXXX" in the dictionary
+for user in dict_users:
+    user["password"] = "XXXXXXXX"
 
 set_tag("finish_processing")
 
