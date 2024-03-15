@@ -116,3 +116,33 @@ class SystemStatsCollector:
         except psutil.NoSuchProcess:
             logger.error(f"Process with PID {self._pid} does not exist.")
             return None
+
+    def get_measure_timestamp(self) -> float:
+        """
+        Get timestamp (from the epoch) of the current measure.
+
+        Returns:
+            timestamp: Current timestamp.
+        """
+        timestamp = DatetimeHelper.current_datetime(from_the_epoch=True)
+        return timestamp
+
+    def collect_stats(self) -> Optional[List]:
+        """
+        Collect stats for the current process.
+
+        Returns:
+            new_stats: Stats collected.
+        """
+        # Collect stats
+        execution_time = self.get_measure_timestamp()
+        cpu_usage = self.get_cpu_usage()
+        cpu_usage_per_core = SystemStatsCollector.get_cpu_usage_per_core()
+        memory_usage = self.get_ram_usage()
+        
+        # Return the measurements if all of them were successfully collected
+        if execution_time is not None and cpu_usage is not None and cpu_usage_per_core is not None and memory_usage is not None:
+            new_stats = [execution_time, cpu_usage] + cpu_usage_per_core + list(memory_usage)
+            return new_stats
+        else:
+            return None

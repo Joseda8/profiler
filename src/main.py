@@ -11,8 +11,9 @@ parser.add_argument("--is_module", action='store_true', help="Flag indicating wh
 parser.add_argument("--script_args", nargs=argparse.REMAINDER, default=[], help="Optional arguments for the script to run")
 args = parser.parse_args()
 
-# Get values to measure
+# Get values to measure and create CSV file instance
 values_to_measure = SystemStatsCollector.get_values_to_measure()
+file_stats = FileWriterCsv(file_path=STATS_FILE_PATH, columns=values_to_measure)
 
 # Run the process and get PID
 process = run_python_process(file_or_module=args.file_to_run, is_module=args.is_module, args=args.script_args)
@@ -22,18 +23,13 @@ logger.info(f"PID of the command: {pid}")
 # Measure subprocess resources usage
 profiler_measurer = SystemStatsCollector(pid=pid)
 logger.info(f"Process creation time: {profiler_measurer.get_process_create_time()}")
-file_stats = FileWriterCsv(file_path=STATS_FILE_PATH, columns=values_to_measure)
 while process.poll() is None:
     # Collect stats
-    execution_time = DatetimeHelper.current_datetime(from_the_epoch=True)
-    cpu_usage = profiler_measurer.get_cpu_usage()
-    cpu_usage_per_core = SystemStatsCollector.get_cpu_usage_per_core()
-    memory_usage = profiler_measurer.get_ram_usage()
+    stats_collected = profiler_measurer.collect_stats()
 
     # Append new stats if they were successfully collected
-    if execution_time is not None and cpu_usage is not None and cpu_usage_per_core is not None and memory_usage is not None:
-        new_stats = [execution_time, cpu_usage] + cpu_usage_per_core + list(memory_usage)
-        file_stats.append_row(row_data=new_stats)
+    if stats_collected is not None:
+        file_stats.append_row(row_data=stats_collected)
         logger.debug(f"New records were successfully written.")
 
 # Write profiling results file

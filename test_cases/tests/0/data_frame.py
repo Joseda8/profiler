@@ -18,6 +18,10 @@ parser = argparse.ArgumentParser(description="Perform a test.")
 parser.add_argument("--num_records", required=True, type=int, help="Number of records to process")
 args = parser.parse_args()
 
+# Idle time to ensure that the whole program is profiled
+time.sleep(1)
+print(f"measure_label-start_program: {DatetimeHelper.current_datetime(from_the_epoch=True)}")
+
 #------- Extract data
 data_handler = DataHandler()
 num_records = args.num_records
@@ -37,3 +41,4 @@ print(f"measure_label-finish_processing: {DatetimeHelper.current_datetime(from_t
 
 # Idle time to ensure some last measures are taken
 time.sleep(1)
+print(f"measure_label-finish_program: {DatetimeHelper.current_datetime(from_the_epoch=True)}")
