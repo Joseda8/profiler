@@ -1,5 +1,6 @@
 from typing import Dict, List, Tuple
 import csv
+from src.const import PREFIX_MEASURE_TAG
 from src.util import FileWriterCsv
 
 
@@ -31,12 +32,12 @@ class StatsCleaner:
         Extracts labels and timestamps and stores them in the labels list.
         """
         with open(self._output_file, "r") as file:
-            lines = file.readlines()
-            for line in lines:
-                # Split each line by colon and whitespace
-                label, timestamp = line.strip().split(": ")
-                label = label.replace("measure_label-", "")
-                self._labels.append((label, float(timestamp)))
+            for line in file:
+                if line.startswith(PREFIX_MEASURE_TAG):
+                    # Split each line by colon and whitespace
+                    label, timestamp = line.strip().split(": ")
+                    label = label.replace(PREFIX_MEASURE_TAG, "")
+                    self._labels.append((label, float(timestamp)))
 
     def _read_stats_file(self) -> None:
         """

@@ -1,4 +1,6 @@
+from src.const import PREFIX_MEASURE_TAG
 from src.util import DatetimeHelper
+
 
 def set_tag(tag_name: str) -> None:
     """
@@ -7,4 +9,4 @@ def set_tag(tag_name: str) -> None:
     Args:
         tag_name (str): The name of the tag.
     """
-    print(f"measure_label-{tag_name}: {DatetimeHelper.current_datetime(from_the_epoch=True)}")
+    print(f"{PREFIX_MEASURE_TAG}{tag_name}: {DatetimeHelper.current_datetime(from_the_epoch=True)}")
