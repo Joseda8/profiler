@@ -102,11 +102,12 @@ class SystemStatsCollector:
 
     def get_process_create_time(self) -> Optional[float]:
         """
-        Get the uptime (seconds) of the process specified by the PID.
+        Get the time (from the epoch) when the process 
+        specified by the PID was created.
 
         Returns:
-            datetime.timedelta: Uptime of the process.
-                                Returns None if the process with the given PID does not exist.
+            create_time: Time when the process was created.
+                                None if the process with the given PID does not exist.
         """
         try:
             process = psutil.Process(self._pid)

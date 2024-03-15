@@ -11,6 +11,9 @@ parser.add_argument("--is_module", action='store_true', help="Flag indicating wh
 parser.add_argument("--script_args", nargs=argparse.REMAINDER, default=[], help="Optional arguments for the script to run")
 args = parser.parse_args()
 
+# Get values to measure
+values_to_measure = SystemStatsCollector.get_values_to_measure()
+
 # Run the process and get PID
 process = run_python_process(file_or_module=args.file_to_run, is_module=args.is_module, args=args.script_args)
 pid = process.pid
@@ -19,10 +22,10 @@ logger.info(f"PID of the command: {pid}")
 # Measure subprocess resources usage
 profiler_measurer = SystemStatsCollector(pid=pid)
 logger.info(f"Process creation time: {profiler_measurer.get_process_create_time()}")
-file_stats = FileWriterCsv(file_path=STATS_FILE_PATH, columns=SystemStatsCollector.get_values_to_measure())
+file_stats = FileWriterCsv(file_path=STATS_FILE_PATH, columns=values_to_measure)
 while process.poll() is None:
     # Collect stats
-    execution_time = DatetimeHelper.current_datetime()
+    execution_time = DatetimeHelper.current_datetime(from_the_epoch=True)
     cpu_usage = profiler_measurer.get_cpu_usage()
     cpu_usage_per_core = SystemStatsCollector.get_cpu_usage_per_core()
     memory_usage = profiler_measurer.get_ram_usage()

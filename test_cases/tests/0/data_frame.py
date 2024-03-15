@@ -22,19 +22,18 @@ args = parser.parse_args()
 data_handler = DataHandler()
 num_records = args.num_records
 
-print(f"Start reading: {DatetimeHelper.current_datetime()}")
+print(f"measure_label-start_reading: {DatetimeHelper.current_datetime(from_the_epoch=True)}")
 df_users = data_handler.read_data(num_records=num_records, data_type="csv")
-print(f"Finished reading: {DatetimeHelper.current_datetime()}")
+print(f"measure_label-finish_reading: {DatetimeHelper.current_datetime(from_the_epoch=True)}")
 logger.info(f"The required information was loaded successfully. Number of records: {len(df_users)}")
 
 #------- Operation
-
-print(f"Start processing: {DatetimeHelper.current_datetime()}")
+print(f"measure_label-start_processing: {DatetimeHelper.current_datetime(from_the_epoch=True)}")
 
 # Replace all values in the "password" column with "XXXXXXXX" in the DataFrame
 df_users["password"] = "XXXXXXXX"
 
-print(f"Finished processing: {DatetimeHelper.current_datetime()}")
+print(f"measure_label-finish_processing: {DatetimeHelper.current_datetime(from_the_epoch=True)}")
 
-# Idle to ensure some last measures are taken
+# Idle time to ensure some last measures are taken
 time.sleep(1)

@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Union
 
 
 class DatetimeHelper:
@@ -7,15 +8,19 @@ class DatetimeHelper:
     """
 
     @staticmethod
-    def current_datetime() -> datetime:
+    def current_datetime(from_the_epoch: bool = False) -> Union[float, datetime]:
         """
         Get the current datetime.
 
-        Returns:
-            str: Current datetime.
-        """
-        return datetime.now()
+        Args:
+            from_the_epoch (bool): If True, returns the current datetime from the epoch.
 
+        Returns:
+            Union[float, datetime]: Current datetime as a float timestamp if from_the_epoch is True,
+            otherwise returns a datetime object.
+        """
+        datetime_now = datetime.now()
+        return datetime_now.timestamp() if from_the_epoch else datetime_now
 
     @staticmethod
     def current_datetime_string() -> str:
