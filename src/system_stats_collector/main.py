@@ -19,6 +19,7 @@ class SystemStatsCollector:
             pid (int): Process ID (PID) of the process to monitor.
         """
         self._pid = pid
+        self._cpu_count = SystemStatsCollector.get_cpu_count()
 
     @staticmethod
     def get_values_to_measure() -> List[str]:
@@ -45,7 +46,7 @@ class SystemStatsCollector:
         """
         try:
             process = psutil.Process(self._pid)
-            cpu_usage = process.cpu_percent(interval=0.1)
+            cpu_usage = process.cpu_percent(interval=0.1) / self._cpu_count
             return cpu_usage
         except psutil.NoSuchProcess:
             logger.error(f"Process with PID {self._pid} does not exist.")
