@@ -180,13 +180,14 @@ class DataHandler:
         except Exception as excep:
             logger.error(f"Failed extending CSV data: {excep}")
 
-    def read_data(self, num_records: int, data_type: str) -> Union[pd.DataFrame, dict, None]:
+    def read_data(self, num_records: int, data_type: str, csv_column_types: dict = None) -> Union[pd.DataFrame, dict, None]:
         """
         Read data from either CSV or JSON format.
 
         Args:
             num_records (int): Number of records to read.
             data_type (str): Type of data to read. Can be 'csv' or 'json'.
+            csv_column_types (dict): Optional argument to specify column types for CSV files.
 
         Returns:
             DataFrame or dict: DataFrame if data_type is 'csv', dict if data_type is 'json'.
@@ -197,7 +198,10 @@ class DataHandler:
         elif data_type == "csv":
             file_path = FILE_PATH_BASE_CSV.replace("5000", str(num_records))
             try:
-                return pd.read_csv(file_path)
+                if csv_column_types:
+                    return pd.read_csv(file_path, dtype=csv_column_types)
+                else:
+                    return pd.read_csv(file_path)
             except FileNotFoundError:
                 logger.error(f"CSV file not found: {file_path}")
                 return None

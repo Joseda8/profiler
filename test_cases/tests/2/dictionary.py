@@ -3,7 +3,7 @@ This benchmark filters female users, groups them by country, and computes the
 average age of women per country in a JSON structure.
 
 Benchmark Steps:
-1. Load user data into a Pandas DataFrame with a specified number of records.
+1. Load user data into a list of dictionaries with a specified number of records.
 2. Filter female users and group them by country in the dictionary.
 3. Find the average age of women per country in the dictionary.
 4. Measure and log the execution time for the operation.
