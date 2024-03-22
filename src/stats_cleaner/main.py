@@ -9,16 +9,16 @@ class StatsCleaner:
     Process the collected data after the program execution.
     """
 
-    def __init__(self, stats_file: str, output_file: str) -> None:
+    def __init__(self, stats_file: str, program_output_file: str) -> None:
         """
         Initialize StatsCleaner with the paths to the stats file and the output file.
 
         Args:
             stats_file (str): Path to the stats file.
-            output_file (str): Path to the output file containing labels and timestamps.
+            program_output_file (str): Path to the output file containing labels and timestamps.
         """
         self._stats_file = stats_file 
-        self._output_file = output_file
+        self._program_output_file = program_output_file
         # List to store labels and timestamps
         self._labels: List[Tuple[str, float]] = []
         # List to store rows of stats data
@@ -28,12 +28,12 @@ class StatsCleaner:
         # Output CSV file after processing
         self._output_csv_path: str = None
 
-    def _read_output_file(self) -> None:
+    def _read_program_output_file(self) -> None:
         """
         Read the output file containing labels and timestamps.
         Extracts labels and timestamps and stores them in the labels list.
         """
-        with open(self._output_file, "r") as file:
+        with open(self._program_output_file, "r") as file:
             for line in file:
                 if line.startswith(PREFIX_MEASURE_TAG_FILE_NAME):
                     # Split each line by colon and whitespace
@@ -95,7 +95,7 @@ class StatsCleaner:
             process_creation_time (float): Time when the process was created given in seconds from the epoch.
         """
         # Read input files
-        self._read_output_file()
+        self._read_program_output_file()
         self._read_stats_file()
 
         # Assign labels to the stats

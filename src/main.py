@@ -1,6 +1,6 @@
 import argparse
 
-from .const import OUTPUT_FILE_PATH, STATS_FILE_PATH
+from .const import OUTPUT_FILE_PATH, STATS_FILE_PATH, RESULTS_PREPROCESSED_FILE_PATH
 from .stats_cleaner import StatsCleaner
 from .system_stats_collector import SystemStatsCollector
 from .util import FileWriterCsv, FileWriterTxt, logger, run_python_process
@@ -49,5 +49,5 @@ logger.info(f"Output saved to: {OUTPUT_FILE_PATH}")
 
 # Assign labels to the stats
 logger.info("Stats file processing process...")
-stats_cleaner = StatsCleaner(stats_file=STATS_FILE_PATH, output_file=OUTPUT_FILE_PATH)
-stats_cleaner.run(output_csv_path=STATS_FILE_PATH, process_creation_time=process_creation_time)
+stats_cleaner = StatsCleaner(stats_file=STATS_FILE_PATH, program_output_file=OUTPUT_FILE_PATH)
+stats_cleaner.run(output_csv_path=RESULTS_PREPROCESSED_FILE_PATH, process_creation_time=process_creation_time)
