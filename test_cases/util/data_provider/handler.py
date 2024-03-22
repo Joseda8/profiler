@@ -6,11 +6,11 @@ from itertools import cycle, islice
 
 import pandas as pd
 
-from ..util.logger import logger
+from ...util.logger import logger
 from .downloader import DataDownloader
 
 
-FOLDER_PATH_DATA = "test_cases/data_provider/data"
+FOLDER_PATH_DATA = "test_cases/util/data_provider/data"
 FILE_PATH_BASE_JSON = f"{FOLDER_PATH_DATA}/users_data_5000.json"
 FILE_PATH_BASE_CSV = f"{FOLDER_PATH_DATA}/users_data_5000.csv"
 

@@ -29,7 +29,7 @@ python3 -m src.main --file_to_run <file_or_module_name> [--is_module] [--script_
 For example:
 
 ```bash
-python3 -m src.main --file_to_run test_cases.tests.0.data_frame --is_module --script_args --num_records 1000000
+python3 -m src.main --file_to_run test_cases.projects.pandas.scenarios.0.data_frame --is_module --script_args --num_records 1000000
 ```
 
 ## Examples

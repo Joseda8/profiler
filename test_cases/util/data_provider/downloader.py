@@ -1,7 +1,7 @@
 import json
 import requests
 
-from ..util.logger import logger
+from ...util.logger import logger
 
 class DataDownloader:
     """
