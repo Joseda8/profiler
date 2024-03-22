@@ -207,9 +207,7 @@ class FileStats:
             if row[core] > max_usage and all(row[core] - row[other_core] >= threshold for other_core in core_columns if other_core != core):
                 max_usage = row[core]
                 dominant_core = i + 1
-
         return dominant_core
-
 
 # Example usage:
 file_path: str = "/home/josemontoya/work/profiler/results/preprocessed/no_conversion_1000000_20240322_113415_stats.csv"
