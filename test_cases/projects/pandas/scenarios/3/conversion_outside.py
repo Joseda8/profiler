@@ -12,9 +12,7 @@ import time
 import os
 
 from src.client_interface import set_tag, set_output_filename
-
-from ...util import logger
-from ...data_provider import DataHandler
+from .....util import DataHandler, logger
 
 
 # Use argparse to get num_records from the terminal
