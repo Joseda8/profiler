@@ -48,6 +48,7 @@ FileWriterTxt.write_text_to_file(file_path=OUTPUT_FILE_PATH, text=output.decode(
 logger.info(f"Output saved to: {OUTPUT_FILE_PATH}")
 
 # Assign labels to the stats
-logger.info("Stats file processing process...")
+logger.info("Processing raw stats file...")
 stats_cleaner = StatsCleaner(stats_file=STATS_FILE_PATH, program_output_file=OUTPUT_FILE_PATH)
 stats_cleaner.run(output_csv_path=RESULTS_PREPROCESSED_FILE_PATH, process_creation_time=process_creation_time)
+logger.info("Raw stats file processed successfully.")

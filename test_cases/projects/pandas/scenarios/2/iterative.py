@@ -15,7 +15,7 @@ import time
 import os
 
 from src.client_interface import set_tag, set_output_filename
-from .....util import DataHandler, logger
+from .....util import DataHandler, logger, get_scenario_name
 
 
 # Use argparse to get num_records from the terminal
@@ -25,7 +25,9 @@ args = parser.parse_args()
 num_records = args.num_records
 
 # Set output filename
-set_output_filename(filename=f"{os.path.splitext(os.path.basename(__file__))[0]}_{num_records}")
+file_path = os.path.abspath(__file__)
+scenario_name = get_scenario_name(file_path=file_path)
+set_output_filename(filename=f"{scenario_name}_{num_records}")
 
 # Idle time to ensure that the whole program is profiled
 time.sleep(1)
