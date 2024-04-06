@@ -22,8 +22,12 @@ class FilesStats:
         Args:
             folder_path (str): Path to the folder containing files.
         """
-        self._folder_path = folder_path
+        # Attributes from arguments
+        self._path_input = folder_path
+
+        # Other attributes
         self._files_info: Tuple[str, List[List[Tuple[str, str, int]]]] = []
+        self._path_output = f"{os.path.dirname(os.path.dirname(self._path_input))}/processed"
 
     def _collect_file_names(self) -> None:
         """
@@ -37,8 +41,8 @@ class FilesStats:
         file_groups = {}
 
         # Collect file names
-        for filename in os.listdir(self._folder_path):
-            file_path = os.path.join(self._folder_path, filename)
+        for filename in os.listdir(self._path_input):
+            file_path = os.path.join(self._path_input, filename)
             if os.path.isfile(file_path):
                 match = pattern.match(filename)
                 if match:
@@ -64,8 +68,7 @@ class FilesStats:
         # Process each scenario independently
         for scenario_id, scenario_files in self._files_info:
             logger.info(f"Processing scenario: {scenario_id}")
-            folder_results = f"{os.path.dirname(os.path.dirname(self._folder_path))}/processed"
-            scenario_file_path = os.path.join(folder_results, f"scenario_{scenario_id}.csv")
+            scenario_file_path = os.path.join(self._path_output, f"scenario_{scenario_id}.csv")
             file_writer = FileWriterCsv(file_path=scenario_file_path, columns=["test_name", "num_records",
                                                                                "time_program", "time_reading", "time_processing", 
                                                                                "avg_cpu_usage", "avg_vm", "avg_ram", "avg_swap",
