@@ -154,10 +154,10 @@ class FileStats:
 
         # Find dominant core
         dominant_core_changes = 0
-        current_dominant_core = None
+        current_dominant_core = -1
         for _, row in df_between_labels.iterrows():
             dominant_core = self._find_dominant_core(row=row)
-            if current_dominant_core and dominant_core:
+            if dominant_core:
                 if dominant_core != current_dominant_core:
                     current_dominant_core = dominant_core
                     dominant_core_changes += 1
