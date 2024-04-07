@@ -7,6 +7,7 @@ import re
 from src.process_results import FileStats
 
 from .const import *
+from .data_plotter import DataPlotter
 from ....util import FileWriterCsv, logger
 
 
@@ -126,3 +127,7 @@ if __name__ == "__main__":
     # Instantiate FilesStats object with the provided folder path
     files_stats = FilesStats(folder_path=args.path_results)
     files_stats.process_files()
+
+    # Create graphs
+    plotter = DataPlotter()
+    plotter.plot_data(csv_file_path="results/processed/scenario_3.csv")

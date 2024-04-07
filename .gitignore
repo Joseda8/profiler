@@ -2,6 +2,7 @@
 *.txt
 *.csv
 *.json
+*.svg
 
 # Ignore any other temporary files, such as .pyc files
 __pycache__/
