@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import Any, List, Tuple
 import os
 import re
 from src.process_results import FileStats
@@ -22,6 +22,20 @@ class FilesStats:
         self._path_input = folder_path
         self._files_info: Tuple[str, List[List[Tuple[str, str, int]]]] = []
         self._path_output = os.path.join(os.path.dirname(os.path.dirname(self._path_input)), "processed")
+
+    @staticmethod
+    def _get_stats_columns(time_tags: List[str]) -> List[str]:
+        """
+        Get the stats that were computed in a given file.
+
+        Args:
+            time_tags (str): Time tags that were extracted from the data.
+        """
+        time_tags = [f"time_{label}" for label in time_tags]
+        stats_columns = STATS_COLUMNS.copy()
+        stats_columns.pop(STATS_TIMES_ID_IDX)
+        stats_columns = stats_columns[:STATS_TIMES_ID_IDX] + time_tags + stats_columns[STATS_TIMES_ID_IDX:]
+        return stats_columns
 
     def _collect_file_names(self) -> None:
         """
@@ -52,17 +66,17 @@ class FilesStats:
         """
         self._collect_file_names()
 
+        # Create stats file
         for scenario_id, scenario_files in self._files_info:
             logger.info(f"Processing scenario: {scenario_id}")
             scenario_file_path = os.path.join(self._path_output, f"scenario_{scenario_id}.csv")
-            columns = ["test_name", "num_records", "time_program", "time_reading", "time_processing",
-                       "avg_cpu_usage", "avg_vm", "avg_ram", "avg_swap", "min_vm", "max_vm",
-                       "min_ram", "max_ram", "min_swap", "max_swap", "dominant_core_changes", "core_changes_by_time"]
-            csv_writer = FileWriterCsv(file_path=scenario_file_path, columns=columns)
-            
+            csv_writer = FileWriterCsv(file_path=scenario_file_path)
+            # Process one file at a time
             for file_path, test_name, num_records in scenario_files:
-                self._process_file(file_path, test_name, num_records, csv_writer)
-
+                stats, columns = self._process_file(file_path, test_name, num_records)
+                if not csv_writer.have_columns():
+                    csv_writer.set_columns(columns=columns)
+                csv_writer.append_row(row_data=stats)
             csv_writer.write_to_csv()
         
         # After processing all files, create graphs for each scenario
@@ -70,16 +84,17 @@ class FilesStats:
         for scenario_id, _ in self._files_info:
             scenario_file_path = os.path.join(self._path_output, f"scenario_{scenario_id}.csv")
             plotter = DataPlotter(path_file_stats=scenario_file_path, folder_results=FOLDER_RESULTS_GRAPHS)
-            
             # Plot various graphs for the scenario CSV
             for column in ["time_processing", "avg_cpu_usage", "avg_vm", "avg_ram", "avg_swap",
                            "min_vm", "max_vm", "min_ram", "max_ram", "min_swap", "max_swap", "core_changes_by_time"]:
-                plotter.plot_line_graph(x_column="num_records", y_column=column, title=f"{column.replace('_', ' ').title()} vs Number of Records")
-
-            plotter.plot_pie_charts(columns=["time_reading", "time_processing"], title="Time per tag")
+                title = column.replace("_", " ").title() + " vs Number of Records"
+                plotter.plot_line_graph(x_column="num_records", y_column=column, title=title)
+            # Graph times
+            time_columns = [col for col in plotter.stats_columns if col.startswith("time_") and col != f"time_{LABEL_PROGRAM}"]
+            plotter.plot_bar_graphs(x_column="num_records", y_columns=time_columns, title="Time proportion per time")
         logger.info("Graphs created successfully.")
         
-    def _process_file(self, file_path: str, test_name: str, num_records: int, csv_writer: FileWriterCsv) -> None:
+    def _process_file(self, file_path: str, test_name: str, num_records: int) -> Tuple[List[Any], List[str]]:
         """
         Process an individual file to extract statistics and append them to the CSV writer.
 
@@ -95,12 +110,17 @@ class FilesStats:
         averages = current_file_stats.get_average_between_labels(start_label=LABEL_START_PROGRAM, finish_label=LABEL_FINISH_PROGRAM)
         min_max = current_file_stats.get_min_max_memory_stats(start_label=LABEL_START_PROGRAM, finish_label=LABEL_FINISH_PROGRAM)
         dominant_core = current_file_stats.track_dominant_core_changes_between_labels(start_label=LABEL_START_PROGRAM, finish_label=LABEL_FINISH_PROGRAM)
-        core_changes_by_time = dominant_core / uptimes["program"]
-        csv_writer.append_row([test_name, num_records, 
-                               uptimes["program"], uptimes["reading"], uptimes["processing"],
-                               averages[0], averages[1], averages[2], averages[3],
-                               min_max[0], min_max[1], min_max[2], min_max[3], min_max[4], min_max[5],
-                               dominant_core, core_changes_by_time])
+        core_changes_by_time = dominant_core / uptimes[LABEL_PROGRAM]
+
+        # Wrap up stats
+        stats = [test_name, num_records] + list(uptimes.values()) + [averages[0], averages[1], averages[2], averages[3],
+                                                                     min_max[0], min_max[1], min_max[2], min_max[3], min_max[4], min_max[5], 
+                                                                     dominant_core, core_changes_by_time]
+
+        # Get computed stats
+        time_tags = list(uptimes.keys())
+        stats_columns = FilesStats._get_stats_columns(time_tags=time_tags)
+        return stats, stats_columns
 
 
 if __name__ == "__main__":
@@ -108,9 +128,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process the results files given by the profiler.")
     parser.add_argument("--path_results", required=True, help="Path to the folder with the result files.")
     args = parser.parse_args()
-
     if not os.path.isdir(args.path_results):
         raise FileNotFoundError(f"Folder not found: {args.path_results}")
 
+    # Process files
     files_stats = FilesStats(folder_path=args.path_results)
     files_stats.process_files()

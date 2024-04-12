@@ -16,7 +16,8 @@ args = parser.parse_args()
 
 # ------- Pre-run process
 values_to_measure = SystemStatsCollector.get_values_to_measure()
-file_stats = FileWriterCsv(file_path=STATS_FILE_PATH, columns=values_to_measure)
+file_stats = FileWriterCsv(file_path=STATS_FILE_PATH)
+file_stats.set_columns(columns=values_to_measure)
 
 
 # ------- Start process and collect stats

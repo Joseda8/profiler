@@ -111,6 +111,7 @@ class StatsCleaner:
 
         # Write the sorted rows to a CSV file using FileWriterCsv
         self._rows_stats = sorted(self._rows_stats, key=lambda row: float(row["uptime"]))
-        file_writer = FileWriterCsv(file_path=output_csv_path, columns=self._file_columns)
+        file_writer = FileWriterCsv(file_path=output_csv_path)
+        file_writer.set_columns(columns=self._file_columns)
         file_writer.append_rows(rows_data=self._rows_stats)
         file_writer.write_to_csv()

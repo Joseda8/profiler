@@ -1,6 +1,9 @@
+from typing import List
 import os
-import matplotlib.pyplot as plt
+
 from matplotlib.figure import Figure
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 
 from ....util import create_directory
@@ -30,6 +33,11 @@ class DataPlotter:
 
         # Create graphs folder
         create_directory(directory=self._folder_results)
+
+    @property
+    def stats_columns(self):
+        """Getter method for accessing self._x"""
+        return self._df.columns
 
     def _save_plot(self, plot: Figure, file_name: str) -> None:
         """
@@ -72,21 +80,41 @@ class DataPlotter:
         # Save graph
         self._save_plot(plt.gcf(), f"{self._file_stats_name}_{y_column}.svg")
 
-    def plot_pie_charts(self, columns: list, title: str):
+    def plot_bar_graphs(self, x_column: str, y_columns: List[str], title: str):
         """
-        Plot pie charts for specified columns per test_name.
+        Plot grouped bar chart for specified y_columns per group of x_column values.
 
         Args:
-            columns (list): List of column names to visualize.
+            x_column (str): Column name for the stats_columns-axis (grouping variable).
+            y_columns (list): List of column names to visualize as grouped bars.
             title (str): Title of the plot.
         """
+        # Set width of each bar
+        bar_width = 0.2
+        num_columns = len(y_columns)
+
         for name, group in self._df_grouped:
-            # Sum the time components for each test_name
-            total_values = group[columns].sum()
-            # Plotting configurations
-            plt.figure(figsize=(8, 8))
-            plt.title(f"{title} for {name}")
-            plt.pie(total_values, labels=columns, autopct="%1.1f%%", startangle=140)
+            group = group.sort_values(by=x_column)
+            # Update each column in the list with proportions scaled to percentage
+            total_time = group[y_columns].sum(axis=1)
+            for col in y_columns:
+                group[col] = (group[col] / total_time) * 100
+
+            # Set positions of bars on X axis
+            bar_groups = np.arange(len(group))
+
+            # Plot grouped bars for each column in y_columns
+            for idx, column in enumerate(y_columns):
+                # Calculate positions for grouped bars
+                current_bar_group = bar_groups + (idx - num_columns/2 + 0.5) * bar_width
+                plt.bar(current_bar_group, group[column], width=bar_width, label=column)
+            
+            # Add labels, title, and legend
+            plt.xlabel(x_column)
+            plt.xticks(bar_groups, group[x_column])
+            plt.title(title)
+            plt.legend()
+
             # Save graph
             title_clean = title.lower().replace(" ", "_")
             self._save_plot(plt.gcf(), f"{self._file_stats_name}_{title_clean}_{name}.svg")
