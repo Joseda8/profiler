@@ -1,9 +1,10 @@
 """
-This benchmark <content>.
+This benchmark creates and address by concatenating several fields.
+It reads number columns directly as strings.
 
 Benchmark Steps:
-1. Load user data into a <structure> with a specified number of records.
-2. <Description>
+1. Load user data into a DataFrame with a specified number of records.
+2. Concatenate selected fields to create an 'address' column.
 3. Measure and log the execution time for the operation.
 """
 
