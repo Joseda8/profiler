@@ -1,5 +1,7 @@
 from typing import Dict, Optional, Tuple, List
+import re
 
+import numpy as np
 import pandas as pd
 
 from .const import *
@@ -20,6 +22,26 @@ class FileStats:
         """
         self._file_path = file_path
         self._df_stats = pd.read_csv(file_path)
+        self._num_cores = FileStats.count_cores_in_dataframe(df=self._df_stats)
+        self._gini_max = 2 - (self._num_cores + 1) / self._num_cores
+
+    @staticmethod
+    def count_cores_in_dataframe(df: pd.DataFrame) -> int:
+        """
+        Count the number of unique core identifiers (n) in the DataFrame based on column names.
+
+        Args:
+            start_label (pd.DataFrame): The input DataFrame containing columns representing core usage.
+
+        Returns:
+            int: The number of unique core identifiers found in the DataFrame column names.
+        """
+        # Pattern to match core_<n>_usage in column names
+        pattern = r'^core_\d+_usage$'
+        # Extract core identifiers from column names
+        core_identifiers = {re.match(pattern, col).group(0) for col in df.columns if re.match(pattern, col)}
+        num_cores = len(core_identifiers)
+        return num_cores
 
     def _find_label_indices(self, label: str) -> List[int]:
         """
@@ -53,7 +75,7 @@ class FileStats:
             return None
 
         # Extract rows between start_label and finish_label indices
-        df_between_labels = self._df_stats.loc[start_indices[0]:finish_indices[0]]
+        df_between_labels = self._df_stats.loc[start_indices[0]:finish_indices[0]].copy()
 
         return df_between_labels
 
@@ -138,35 +160,86 @@ class FileStats:
 
         return (min_virtual_memory_usage, max_virtual_memory_usage, min_ram_usage, max_ram_usage, min_swap_usage, max_swap_usage)
 
-    def track_dominant_core_changes_between_labels(self, start_label: str, finish_label: str) -> Optional[float]:
+    def track_dominant_core_changes_between_labels(self, start_label: str, finish_label: str) -> Tuple[int, float, float]:
         """
-        Track changes in the dominant core between specific labels and calculate the average duration between changes.
+        Track changes in the dominant core between specific labels and calculate the total time with dominant cores.
 
         Args:
             start_label (str): The starting label.
             finish_label (str): The finishing label.
 
         Returns:
-            Optional[float]: The average duration between changes in the dominant core between the specified labels in seconds.
+            Optional[Tuple[int, float]]: A tuple containing the number of changes in the dominant core and the cumulative duration
+            of each dominant core state in seconds. Also the average disparity of the cores load.
         """
-        # Extract rows between start_label and finish_label indices
+        # Compute dominant cores between a given range
         df_between_labels = self._get_df_between_labels(start_label=start_label, finish_label=finish_label)
+        df_between_labels["dominant_core"] = df_between_labels.apply(self._find_dominant_core, axis=1)
+        # Compute load disparity
+        df_between_labels["core_load_disparity"] = df_between_labels.apply(self._get_cores_load_disparity, axis=1)
+        cores_disparity_avg = df_between_labels[df_between_labels["core_load_disparity"] > 0]["core_load_disparity"].mean()
+        cores_disparity_avg = 0 if cores_disparity_avg is np.NaN else cores_disparity_avg
 
-        # Find dominant core
+        # Dominant core changes and cumulative duration
         dominant_core_changes = 0
-        current_dominant_core = -1
+        timer_dom_core = 0.0
+
+        # Track changes and calculate duration of each dominant core state
+        current_dominant_core = None
+        dominant_core_start = None
         for _, row in df_between_labels.iterrows():
-            dominant_core = self._find_dominant_core(row=row)
-            if dominant_core:
+            dominant_core = row["dominant_core"]
+            if dominant_core > 0:
                 if dominant_core != current_dominant_core:
+                    # Update dominant core change count
                     current_dominant_core = dominant_core
                     dominant_core_changes += 1
+                    # Start timer for current dominant core state
+                    dominant_core_start = row["uptime"] if dominant_core_start is None else dominant_core_start
             else:
+                # Update current dominant core value
                 current_dominant_core = dominant_core
-        return dominant_core_changes
+                # Calculate duration of the last dominant core state
+                if dominant_core_start:
+                    timer_dom_core += (row["uptime"] - dominant_core_start)
+                    dominant_core_start = None
 
+        return (dominant_core_changes, timer_dom_core, cores_disparity_avg)
+    
+    def _get_cores_load_disparity(self, row: pd.Series) -> float:
+        """
+        Calculate the load disparity among the cores.
 
-    def _find_dominant_core(self, row: pd.Series, threshold: int = 70) -> Optional[int]:
+        This function computes the Gini coefficient of the serie
+        and scales the value to the maximum possible given the number
+        of cores evaluated.
+
+        Parameters:
+        row (pd.Series): A pandas Series containing float numbers.
+
+        Returns:
+        float: A percentage of how much disparity there is in the record.
+        """
+        # Get usage per core
+        usage_per_core = row[["core_1_usage", "core_2_usage", "core_3_usage", "core_4_usage", "core_5_usage", "core_6_usage"]]
+        total_usage = usage_per_core.sum()
+        if total_usage > 0:
+            # Normalize the serie
+            normalized_series = usage_per_core / usage_per_core.sum()
+            # Sort the normalized values
+            sorted_values = normalized_series.sort_values()
+            # Calculate cumulative sums
+            cumulative_sum = np.cumsum(sorted_values)
+            # Calculate Gini coefficient
+            num_elements = len(usage_per_core)
+            gini_coefficient = (num_elements + 1 - 2 * np.sum(cumulative_sum)) / num_elements
+            # Scale the value to the maximum Gini coefficient possible
+            gini_coefficient_percentage = (gini_coefficient * 100) / self._gini_max
+        else:
+            gini_coefficient_percentage = 0
+        return gini_coefficient_percentage
+
+    def _find_dominant_core(self, row: pd.Series, threshold: int = 70) -> int:
         """
         Find the dominant core in a given row.
 
@@ -175,13 +248,13 @@ class FileStats:
             threshold (int, optional): The threshold for determining dominance. Defaults to 70.
 
         Returns:
-            Optional[int]: The index of the dominant core if found, None otherwise.
+            int: The index of the dominant core if found. -1 if there is no dominant core.
         """
         core_columns = ["core_1_usage", "core_2_usage", "core_3_usage", "core_4_usage", "core_5_usage", "core_6_usage"]
         max_usage = 0
-        dominant_core = None
-        for i, core in enumerate(core_columns):
+        dominant_core = -1
+        for idx, core in enumerate(core_columns):
             if row[core] > max_usage and all(row[core] - row[other_core] >= threshold for other_core in core_columns if other_core != core):
                 max_usage = row[core]
-                dominant_core = i + 1
+                dominant_core = idx + 1
         return dominant_core
