@@ -1,6 +1,6 @@
 import argparse
 
-from .const import OUTPUT_FILE_PATH, STATS_FILE_PATH, RESULTS_PREPROCESSED_FILE_PATH
+from .const import OUTPUT_FILE_PATH, RESULTS_PREPROCESSED_FILE_PATH, STATS_FILE_PATH
 from .stats_cleaner import StatsCleaner
 from .system_stats_collector import SystemStatsCollector
 from .util import FileWriterCsv, FileWriterTxt, logger, run_python_process

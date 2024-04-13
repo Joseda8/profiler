@@ -2,6 +2,7 @@ from typing import List, Optional, Tuple
 
 import psutil
 
+from .const import KEYWORD_CPU_USAGE_PER_CORE, TEMPLATE_USAGE_PER_CORE, VALUES_TO_MEASURE
 from src.util import DatetimeHelper
 from src.util import logger
 
@@ -31,7 +32,12 @@ class SystemStatsCollector:
         Returns:
             values_to_measure: Name of the values to measure.
         """
-        values_to_measure = ["uptime", "cpu_usage"] + [f"core_{i+1}_usage" for i in range(SystemStatsCollector.get_cpu_count())] + ["virtual_memory_usage", "ram_usage", "swap_usage"]
+        # Build cores values
+        values_cpu_usage = [TEMPLATE_USAGE_PER_CORE.format(core_idx=idx) for idx in range(SystemStatsCollector.get_cpu_count())]
+        idx_cpu_cores_usage = VALUES_TO_MEASURE.index(KEYWORD_CPU_USAGE_PER_CORE)
+        # Build stats values
+        values_to_measure = VALUES_TO_MEASURE
+        values_to_measure[idx_cpu_cores_usage:idx_cpu_cores_usage+1] = values_cpu_usage
         return values_to_measure
     
     def get_cpu_usage(self) -> float:
