@@ -90,9 +90,9 @@ class FilesStats:
                 title = column.replace("_", " ").title() + " vs Number of Records"
                 plotter.plot_line_graph(x_column="num_records", y_column=column, title=title)
             # Graph times
-            time_columns = [col for col in plotter.stats_columns if col.startswith("time_") and col != f"time_{LABEL_PROGRAM}" and col != "time_with_dominant_core"]
+            time_columns = [col for col in plotter.stats_columns if col.startswith("time_") and col != f"time_{LABEL_PROGRAM}" and col != "time_with_dominant_core" and col != "time_not_dominant_core"]
             plotter.plot_bar_graphs(x_column="num_records", y_columns=time_columns, title="Time proportion per time")
-            plotter.plot_bar_graphs(x_column="num_records", y_columns=[f"time_{LABEL_PROGRAM}", "time_with_dominant_core"], title="Time proportion with dominant core")
+            plotter.plot_bar_graphs(x_column="num_records", y_columns=["time_not_dominant_core", "time_with_dominant_core"], title="Time proportion with dominant core")
         logger.info("Graphs created successfully.")
         
     def _process_file(self, file_path: str, test_name: str, num_records: int) -> Tuple[List[Any], List[str]]:
@@ -111,12 +111,14 @@ class FilesStats:
         averages = current_file_stats.get_average_between_labels(start_label=LABEL_START_PROGRAM, finish_label=LABEL_FINISH_PROGRAM)
         min_max = current_file_stats.get_min_max_memory_stats(start_label=LABEL_START_PROGRAM, finish_label=LABEL_FINISH_PROGRAM)
         dominant_core, time_dominant_cores, cores_disparity_avg = current_file_stats.track_dominant_core_changes_between_labels(start_label=LABEL_START_PROGRAM, finish_label=LABEL_FINISH_PROGRAM)
+        time_not_dominant_core = uptimes[LABEL_PROGRAM] - time_dominant_cores
         core_changes_by_time = dominant_core / uptimes[LABEL_PROGRAM]
+
 
         # Wrap up stats
         stats = [test_name, num_records] + list(uptimes.values()) + [averages[0], averages[1], averages[2], averages[3],
                                                                      min_max[0], min_max[1], min_max[2], min_max[3], min_max[4], min_max[5], 
-                                                                     dominant_core, core_changes_by_time, time_dominant_cores, cores_disparity_avg]
+                                                                     dominant_core, core_changes_by_time, time_dominant_cores, time_not_dominant_core, cores_disparity_avg]
 
         # Get computed stats
         time_tags = list(uptimes.keys())

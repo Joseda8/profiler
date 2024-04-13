@@ -1,5 +1,25 @@
 #!/bin/bash
 
+# Function to check if string matches any pattern
+function matches_any_pattern() {
+    local string="$1"
+    local patterns=("${@:2}")
+
+    for pattern in "${patterns[@]}"; do
+        if [[ $string == $pattern ]]; then
+            return 0  # Match found
+        fi
+    done
+
+    return 1  # No match found
+}
+
+# List of scenarios to exclude to check against
+excluded_scenarios=(
+    "test_cases.projects.pandas.scenarios.0.*"
+    "test_cases.projects.pandas.scenarios.1.*"
+)
+
 # Define arrays of values
 file_to_run_values=(
     "test_cases.projects.pandas.scenarios.0.data_frame"
@@ -20,6 +40,7 @@ num_records_values=(
     1000
     5000
     10000
+    50000
     100000
     200000
     500000
@@ -31,10 +52,16 @@ num_records_values=(
 sleep 1
 for file_to_run in "${file_to_run_values[@]}"; do
     for num_records in "${num_records_values[@]}"; do
-        # Run the Python profiler
-        echo "Running test: $file_to_run with num_records: $num_records"
-        python3 -m src.main --file_to_run "$file_to_run" --is_module --script_args --num_records "$num_records"
-        sleep 2
+        # Check if the pattern must be excluded
+        if [[ $num_records -eq 2000000 ]] && matches_any_pattern "$file_to_run" "${excluded_scenarios[@]}"; then
+            # Skip the test
+            echo "Skipping test: $file_to_run with num_records: $num_records"
+        else
+            # Run the Python profiler
+            echo "Running test: $file_to_run with num_records: $num_records"
+            python3 -m src.main --file_to_run "$file_to_run" --is_module --script_args --num_records "$num_records"
+            sleep 2
+        fi
     done
 done
 

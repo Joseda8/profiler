@@ -13,5 +13,5 @@ FOLDER_RESULTS_GRAPHS = f"{FOLDER_RESULTS}/processed/graphs"
 # Stats
 STATS_TIMES_ID = "time_tags"
 STATS_COLUMNS = ["test_name", "num_records", STATS_TIMES_ID, "avg_cpu_usage", "avg_vm", "avg_ram", "avg_swap",
-                 "min_vm", "max_vm", "min_ram", "max_ram", "min_swap", "max_swap", "dominant_core_changes", "core_changes_by_time", "time_with_dominant_core", "cores_disparity_avg"]
+                 "min_vm", "max_vm", "min_ram", "max_ram", "min_swap", "max_swap", "dominant_core_changes", "core_changes_by_time", "time_with_dominant_core", "time_not_dominant_core", "cores_disparity_avg"]
 STATS_TIMES_ID_IDX = STATS_COLUMNS.index(STATS_TIMES_ID)
