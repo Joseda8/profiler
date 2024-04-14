@@ -221,7 +221,7 @@ class FileStats:
         float: A percentage of how much disparity there is in the record.
         """
         # Get usage per core
-        usage_per_core = row[["core_1_usage", "core_2_usage", "core_3_usage", "core_4_usage", "core_5_usage", "core_6_usage"]]
+        usage_per_core = row[["core_0_usage", "core_1_usage", "core_2_usage", "core_3_usage", "core_4_usage", "core_5_usage"]]
         total_usage = usage_per_core.sum()
         if total_usage > 0:
             # Normalize the serie
@@ -250,7 +250,7 @@ class FileStats:
         Returns:
             int: The index of the dominant core if found. -1 if there is no dominant core.
         """
-        core_columns = ["core_1_usage", "core_2_usage", "core_3_usage", "core_4_usage", "core_5_usage", "core_6_usage"]
+        core_columns = ["core_0_usage", "core_1_usage", "core_2_usage", "core_3_usage", "core_4_usage", "core_5_usage"]
         max_usage = 0
         dominant_core = -1
         for idx, core in enumerate(core_columns):
