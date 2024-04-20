@@ -74,6 +74,7 @@ class DataPlotter:
 
         # Iterate through each group and plot
         for name, group in self._df_grouped:
+            group = group.sort_values(by=x_column)
             plt.plot(group[x_column], group[y_column], marker="o", linestyle="-", label=name)
             plt.xlim(group[x_column].min(), group[x_column].max())
         # Extra configurations
