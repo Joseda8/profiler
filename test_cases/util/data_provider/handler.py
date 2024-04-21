@@ -226,6 +226,9 @@ if __name__ == "__main__":
 
     # Replicate or cut base data to create new files
     logger.info("Creating files with different extensions")
+    data_handler.extend_data(num_records=10)
+    data_handler.extend_data(num_records=20)
+    data_handler.extend_data(num_records=50)
     data_handler.extend_data(num_records=100)
     data_handler.extend_data(num_records=500)
     data_handler.extend_data(num_records=1000)

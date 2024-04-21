@@ -35,6 +35,9 @@ file_to_run_values=(
     "test_cases.projects.pandas.scenarios.4.shape"
 )
 num_records_values=(
+    10
+    20
+    50
     100
     500
     1000
