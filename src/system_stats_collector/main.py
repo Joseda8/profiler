@@ -40,7 +40,7 @@ class SystemStatsCollector:
         values_to_measure[idx_cpu_cores_usage:idx_cpu_cores_usage+1] = values_cpu_usage
         return values_to_measure
     
-    def get_cpu_usage(self) -> float:
+    def get_cpu_usage(self) -> Optional[float]:
         """
         Get the CPU usage of the process specified by the PID.
 
@@ -78,7 +78,7 @@ class SystemStatsCollector:
             logger.error(f"Failed to retrieve CPU usage per core: {excep}")
             return None
 
-    def get_ram_usage(self) -> Tuple[int, int, int]:
+    def get_memory_usage(self) -> Tuple[float, float, float]:
         """
         Get the RAM usage of the process specified by the PID.
 
@@ -146,7 +146,7 @@ class SystemStatsCollector:
         execution_time = self.get_measure_timestamp()
         cpu_usage = self.get_cpu_usage()
         cpu_usage_per_core = SystemStatsCollector.get_cpu_usage_per_core()
-        memory_usage = self.get_ram_usage()
+        memory_usage = self.get_memory_usage()
         
         # Return the measurements if all of them were successfully collected
         if execution_time is not None and cpu_usage is not None and cpu_usage_per_core is not None and memory_usage is not None:
