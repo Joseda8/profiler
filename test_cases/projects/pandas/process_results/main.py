@@ -1,7 +1,7 @@
 from typing import Any, List, Tuple
 import os
 import re
-from src.process_results import FileStats
+from src.client_interface import FileStats
 from .const import *
 from .data_plotter import DataPlotter
 from ....util import FileWriterCsv, logger
