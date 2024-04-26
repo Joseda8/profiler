@@ -21,6 +21,7 @@ class SystemStatsCollector:
         """
         self._pid = pid
         self._cpu_count = SystemStatsCollector.get_cpu_count()
+        self._process = psutil.Process(pid)
 
     @staticmethod
     def get_values_to_measure() -> List[str]:
@@ -44,15 +45,13 @@ class SystemStatsCollector:
         """
         Get the CPU usage of the process specified by the PID.
 
-        It is measured in a gap of 0.1 seconds, so it is a blocking action.
-
         Returns:
             float: CPU usage percentage of the process.
                    Returns None if the process with the given PID does not exist.
         """
         try:
-            process = psutil.Process(self._pid)
-            cpu_usage = process.cpu_percent(interval=0.1) / self._cpu_count
+            self._process
+            cpu_usage = self._process.cpu_percent(interval=0.0) / self._cpu_count
             return cpu_usage
         except psutil.NoSuchProcess:
             logger.error(f"Process with PID {self._pid} does not exist.")
@@ -66,13 +65,11 @@ class SystemStatsCollector:
         it is not possible to know which core is performing an action related to the
         given PID.
 
-        It is measured in a gap of 0.1 seconds, so it is a blocking action.
-
         Returns:
             cpu_percentages: CPU usage percentage for each CPU core.
         """
         try:
-            cpu_percentages = psutil.cpu_percent(percpu=True, interval=0.1)
+            cpu_percentages = psutil.cpu_percent(percpu=True, interval=0.0)
             return cpu_percentages
         except Exception as excep:
             logger.error(f"Failed to retrieve CPU usage per core: {excep}")
@@ -87,8 +84,8 @@ class SystemStatsCollector:
                    Returns None if the process with the given PID does not exist.
         """
         try:
-            process = psutil.Process(self._pid)
-            memory_usage = process.memory_full_info()
+            self._process
+            memory_usage = self._process.memory_full_info()
             # Convert values to GB
             virtual_memory_usage = memory_usage.vms / (1024 ** 3)
             ram_usage = memory_usage.rss / (1024 ** 3)
@@ -118,8 +115,7 @@ class SystemStatsCollector:
                                 None if the process with the given PID does not exist.
         """
         try:
-            process = psutil.Process(self._pid)
-            create_time = process.create_time()
+            create_time = self._process.create_time()
             return create_time
         except psutil.NoSuchProcess:
             logger.error(f"Process with PID {self._pid} does not exist.")

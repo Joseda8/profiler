@@ -1,3 +1,4 @@
+from time import sleep
 import argparse
 
 from .const import OUTPUT_FILE_PATH, RESULTS_PREPROCESSED_FILE_PATH, STATS_FILE_PATH
@@ -36,7 +37,8 @@ while process.poll() is None:
     if stats_collected is not None:
         file_stats.append_row(row_data=stats_collected)
         logger.debug(f"New records were successfully written.")
-
+    # Sampling time of 100ms
+    sleep(0.1)
 
 # ------- Post-run process
 # Write profiling results file
