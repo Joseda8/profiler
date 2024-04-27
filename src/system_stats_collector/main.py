@@ -88,7 +88,7 @@ class SystemStatsCollector:
             self._process
             memory_usage = self._process.memory_full_info()
             # Convert values to GB
-            virtual_memory_usage = memory_usage.uss / (1024 ** 3)
+            virtual_memory_usage = memory_usage.vms / (1024 ** 3)
             ram_usage = memory_usage.rss / (1024 ** 3)
             swap_memory_usage = memory_usage.swap / (1024 ** 3)
             return (virtual_memory_usage, ram_usage, swap_memory_usage)
