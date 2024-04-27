@@ -75,19 +75,20 @@ class SystemStatsCollector:
             logger.error(f"Failed to retrieve CPU usage per core: {excep}")
             return None
 
-    def get_memory_usage(self) -> Tuple[float, float, float]:
+    def get_memory_usage(self) -> Optional[Tuple[float, float, float]]:
         """
-        Get the RAM usage of the process specified by the PID.
+        Get the memory usage of the process specified by the PID.
 
         Returns:
-            float: RAM usage in bytes of the process.
-                   Returns None if the process with the given PID does not exist.
+            Optional[Tuple[float, float, float]]: A tuple containing the memory usage 
+            information in gigabytes (virtual memory usage, RAM usage, swap memory usage). 
+            Returns None if the process with the given PID does not exist.
         """
         try:
             self._process
             memory_usage = self._process.memory_full_info()
             # Convert values to GB
-            virtual_memory_usage = memory_usage.vms / (1024 ** 3)
+            virtual_memory_usage = memory_usage.uss / (1024 ** 3)
             ram_usage = memory_usage.rss / (1024 ** 3)
             swap_memory_usage = memory_usage.swap / (1024 ** 3)
             return (virtual_memory_usage, ram_usage, swap_memory_usage)
