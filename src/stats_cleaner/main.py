@@ -80,7 +80,7 @@ class StatsCleaner:
         Args:
             process_creation_time (float): Time when the process was created given in seconds from the epoch.
         """
-        # For each label and timestamp pair, assign label to the closest row
+        # For each row, its uptime is computed taking the creation time as reference
         for row in self._rows_stats:
             row["uptime"] = float(row["uptime"]) - process_creation_time
 

@@ -23,7 +23,10 @@ class FileStats:
         self._file_path = file_path
         self._df_stats = pd.read_csv(file_path)
         self._num_cores = FileStats.count_cores_in_dataframe(df=self._df_stats)
-        self._gini_max = 2 - (self._num_cores + 1) / self._num_cores
+
+        # Extra attributes
+        self._gini_max = (self._num_cores - 1) / self._num_cores
+        self._core_columns = [CSV_STATS_COL_NAME_CORE_N_USAGE.format(core_idx=idx) for idx in range(0, self._num_cores)]
 
     @staticmethod
     def count_cores_in_dataframe(df: pd.DataFrame) -> int:
@@ -126,10 +129,10 @@ class FileStats:
         df_between_labels = self._get_df_between_labels(start_label=start_label, finish_label=finish_label)
 
         # Calculate the average CPU usage, virtual memory usage, RAM usage, and swap usage for the relevant rows
-        average_cpu_usage = df_between_labels["cpu_usage"].mean()
-        average_virtual_memory_usage = df_between_labels["virtual_memory_usage"].mean()
-        average_ram_usage = df_between_labels["ram_usage"].mean()
-        average_swap_usage = df_between_labels["swap_usage"].mean()
+        average_cpu_usage = df_between_labels[CSV_STATS_COL_NAME_CPU_USAGE].mean()
+        average_virtual_memory_usage = df_between_labels[CSV_STATS_COL_NAME_VIRTUAL_MEMORY_USAGE].mean()
+        average_ram_usage = df_between_labels[CSV_STATS_COL_NAME_RAM_USAGE].mean()
+        average_swap_usage = df_between_labels[CSV_STATS_COL_NAME_SWAP_USAGE].mean()
         return (average_cpu_usage, average_virtual_memory_usage, average_ram_usage, average_swap_usage)
 
     def get_min_max_memory_stats(self, start_label: str, finish_label: str) -> Optional[Tuple[float, float, float, float, float, float]]:
@@ -151,12 +154,12 @@ class FileStats:
         df_between_labels = self._get_df_between_labels(start_label=start_label, finish_label=finish_label)
 
         # Calculate the minimum and maximum values of virtual memory usage, RAM usage, and swap usage for the relevant rows
-        min_virtual_memory_usage = df_between_labels["virtual_memory_usage"].min()
-        max_virtual_memory_usage = df_between_labels["virtual_memory_usage"].max()
-        min_ram_usage = df_between_labels["ram_usage"].min()
-        max_ram_usage = df_between_labels["ram_usage"].max()
-        min_swap_usage = df_between_labels["swap_usage"].min()
-        max_swap_usage = df_between_labels["swap_usage"].max()
+        min_virtual_memory_usage = df_between_labels[CSV_STATS_COL_NAME_VIRTUAL_MEMORY_USAGE].min()
+        max_virtual_memory_usage = df_between_labels[CSV_STATS_COL_NAME_VIRTUAL_MEMORY_USAGE].max()
+        min_ram_usage = df_between_labels[CSV_STATS_COL_NAME_RAM_USAGE].min()
+        max_ram_usage = df_between_labels[CSV_STATS_COL_NAME_RAM_USAGE].max()
+        min_swap_usage = df_between_labels[CSV_STATS_COL_NAME_SWAP_USAGE].min()
+        max_swap_usage = df_between_labels[CSV_STATS_COL_NAME_SWAP_USAGE].max()
 
         return (min_virtual_memory_usage, max_virtual_memory_usage, min_ram_usage, max_ram_usage, min_swap_usage, max_swap_usage)
 
@@ -173,7 +176,7 @@ class FileStats:
             of each dominant core state in seconds. Also the average disparity of the cores load.
         """
         # Compute dominant cores between a given range
-        df_between_labels = self._get_df_between_labels(start_label=start_label, finish_label=finish_label)
+        df_between_labels = self._get_df_between_labels(start_label=start_label, finish_label=finish_label).reset_index()
         df_between_labels["dominant_core"] = df_between_labels.apply(self._find_dominant_core, axis=1)
         # Compute load disparity
         df_between_labels["core_load_disparity"] = df_between_labels.apply(self._get_cores_load_disparity, axis=1)
@@ -187,15 +190,18 @@ class FileStats:
         # Track changes and calculate duration of each dominant core state
         current_dominant_core = None
         dominant_core_start = None
-        for _, row in df_between_labels.iterrows():
+        for idx, row in df_between_labels.iterrows():
             dominant_core = row["dominant_core"]
-            if dominant_core > 0:
+            if dominant_core >= 0:
                 if dominant_core != current_dominant_core:
                     # Update dominant core change count
                     current_dominant_core = dominant_core
                     dominant_core_changes += 1
                     # Start timer for current dominant core state
                     dominant_core_start = row["uptime"] if dominant_core_start is None else dominant_core_start
+                elif idx == len(df_between_labels) - 1:
+                    # Calculate duration the dominant core that never changed
+                    timer_dom_core += (row["uptime"] - dominant_core_start)
             else:
                 # Update current dominant core value
                 current_dominant_core = dominant_core
@@ -221,18 +227,18 @@ class FileStats:
         float: A percentage of how much disparity there is in the record.
         """
         # Get usage per core
-        usage_per_core = row[["core_0_usage", "core_1_usage", "core_2_usage", "core_3_usage", "core_4_usage", "core_5_usage"]]
+        usage_per_core = row[self._core_columns]
+
         total_usage = usage_per_core.sum()
         if total_usage > 0:
-            # Normalize the serie
+            # Normalize and sort the serie
             normalized_series = usage_per_core / usage_per_core.sum()
-            # Sort the normalized values
-            sorted_values = normalized_series.sort_values()
-            # Calculate cumulative sums
-            cumulative_sum = np.cumsum(sorted_values)
+            normalized_series.sort_values(inplace=True)
+            normalized_series.reset_index(drop=True, inplace=True)
+            # Compute Σ(i * value_i)
+            summation = ((normalized_series.index + 1) * normalized_series).sum()
             # Calculate Gini coefficient
-            num_elements = len(usage_per_core)
-            gini_coefficient = (num_elements + 1 - 2 * np.sum(cumulative_sum)) / num_elements
+            gini_coefficient = (2 * summation - self._num_cores - 1) / self._num_cores
             # Scale the value to the maximum Gini coefficient possible
             gini_coefficient_percentage = (gini_coefficient * 100) / self._gini_max
         else:
@@ -250,11 +256,10 @@ class FileStats:
         Returns:
             int: The index of the dominant core if found. -1 if there is no dominant core.
         """
-        core_columns = ["core_0_usage", "core_1_usage", "core_2_usage", "core_3_usage", "core_4_usage", "core_5_usage"]
         max_usage = 0
         dominant_core = -1
-        for idx, core in enumerate(core_columns):
-            if row[core] > max_usage and all(row[core] - row[other_core] >= threshold for other_core in core_columns if other_core != core):
+        for idx, core in enumerate(self._core_columns):
+            if row[core] > max_usage and all(row[core] - row[other_core] >= threshold for other_core in self._core_columns if other_core != core):
                 max_usage = row[core]
-                dominant_core = idx + 1
+                dominant_core = idx
         return dominant_core
