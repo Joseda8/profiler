@@ -1,4 +1,3 @@
-import os
 from src.client_interface import set_tag, set_output_filename
 
 # Set output filename
