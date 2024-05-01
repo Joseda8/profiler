@@ -32,6 +32,7 @@ class DataPlotter:
         self._df_grouped = self._df.groupby("test_name")
         # List of number of records
         self._num_records = self._df["num_records"].unique().tolist()
+        self._num_records.sort()
         # Create graphs folder
         create_directory(directory=self._folder_results)
 
