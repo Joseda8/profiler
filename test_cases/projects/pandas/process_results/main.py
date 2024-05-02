@@ -77,6 +77,8 @@ class FilesStats:
                 if not csv_writer.have_columns():
                     csv_writer.set_columns(columns=columns)
                 csv_writer.append_row(row_data=stats)
+            # Order results by test name and number of records
+            csv_writer.order_by_columns(columns=["test_name", "num_records"])
             csv_writer.write_to_csv()
         
         # After processing all files, create graphs for each scenario

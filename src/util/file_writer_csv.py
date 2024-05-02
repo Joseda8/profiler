@@ -21,8 +21,7 @@ class FileWriterCsv:
         """
         Check if columns were already assigned.
         """
-        does_have_columns = (len(self._data.columns)>0)
-        return does_have_columns
+        return len(self._data.columns) > 0
 
     def set_columns(self, columns: List[str]) -> None:
         """
@@ -58,6 +57,20 @@ class FileWriterCsv:
             raise ValueError("Columns must be set before appending rows.")
         new_rows = pd.DataFrame(rows_data, columns=self._data.columns)
         self._data = pd.concat([self._data, new_rows], ignore_index=True)
+
+    def order_by_columns(self, columns: List[str]) -> None:
+        """
+        Order the DataFrame by given columns.
+
+        Args:
+            columns (List[str]): The names of the columns to order by.
+        """
+        if not self.have_columns():
+            raise ValueError("Columns must be set before ordering.")
+        for column_name in columns:
+            if column_name not in self._data.columns:
+                raise ValueError(f"Column '{column_name}' does not exist in the DataFrame.")
+        self._data = self._data.sort_values(by=columns)
 
     def write_to_csv(self) -> None:
         """
