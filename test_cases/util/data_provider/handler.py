@@ -1,7 +1,7 @@
 import json
 import os
 
-from typing import Union
+from typing import List, Union
 from itertools import cycle, islice
 
 import pandas as pd
@@ -180,7 +180,7 @@ class DataHandler:
         except Exception as excep:
             logger.error(f"Failed extending CSV data: {excep}")
 
-    def read_data(self, num_records: int, data_type: str, csv_column_types: dict = None) -> Union[pd.DataFrame, dict, None]:
+    def read_data(self, num_records: int, data_type: str, csv_column_types: dict = None) -> Union[pd.DataFrame, List, None]:
         """
         Read data from either CSV or JSON format.
 
@@ -190,7 +190,7 @@ class DataHandler:
             csv_column_types (dict): Optional argument to specify column types for CSV files.
 
         Returns:
-            DataFrame or dict: DataFrame if data_type is 'csv', dict if data_type is 'json'.
+            DataFrame or list: DataFrame if data_type is 'csv', list of dictionaries if data_type is 'json'.
         """
         if not self._is_data_available:
             logger.error("The base data has not been downloaded")

@@ -44,7 +44,6 @@ logger.info(f"The required information was loaded successfully. Number of record
 set_tag("start_processing")
 
 num_records = df_users.shape[0]
-logger.debug(f"Number of records: {num_records}")
 
 set_tag("finish_processing")
 

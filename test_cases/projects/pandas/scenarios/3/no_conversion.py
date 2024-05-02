@@ -50,9 +50,6 @@ df_users["address"] = (
     df_users["state"] + ", " + df_users["country"]
 )
 
-# New DataFrame with username and address columns
-df_users_address = df_users[["username", "address"]]
-
 set_tag("finish_processing")
 
 # Idle time to ensure some last measures are taken
