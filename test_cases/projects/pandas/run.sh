@@ -33,6 +33,8 @@ file_to_run_values=(
     "test_cases.projects.pandas.scenarios.3.no_conversion"
     "test_cases.projects.pandas.scenarios.4.len"
     "test_cases.projects.pandas.scenarios.4.shape"
+    "test_cases.projects.pandas.scenarios.5.no_timezone"
+    "test_cases.projects.pandas.scenarios.5.timezone"
 )
 num_records_values=(
     10
