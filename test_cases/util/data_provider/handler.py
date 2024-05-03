@@ -43,12 +43,11 @@ class DataHandler:
         '_is_data_available' attribute.
         """
         try:
-            # Download users and create JSON file
+            # Download users and create base CSV/JSON file
             if not self._is_data_available:
                 data_downloader = DataDownloader()
-                data_downloader.download_users(file_path=FILE_PATH_BASE_JSON, num_results=5000)
-                # Create CSV file
-                self._json_to_csv(path_csv=FILE_PATH_BASE_CSV, path_json=FILE_PATH_BASE_JSON)
+                data_downloader.download_users(file_path=FILE_PATH_BASE_JSON, file_type="json", num_results=5000)
+                data_downloader.download_users(file_path=FILE_PATH_BASE_CSV, file_type="csv", num_results=5000)
                 # Mark data as available
                 self._is_data_available = True
                 logger.info("Data downloaded successfully")
@@ -57,64 +56,6 @@ class DataHandler:
         except Exception as excep:
             logger.error(f"Failed downloading the data: {excep}")
             self._is_data_available = False
-
-    @staticmethod
-    def _json_to_csv(path_csv: str, path_json: str):
-        """
-        Takes the users data dictionary and stores its content in a CSV file. 
-        It requires a JSON file with the data.
-
-        Parameters:
-            path_csv (str): Path to store the CSV file".
-            path_json (str): Path to the JSON file with the original data".
-        """
-        try:
-            # Read original JSON file
-            records = []
-            with open(path_json, "r") as json_file:
-                records = json.load(json_file)
-
-            # Flatten the nested structure for each record
-            flat_records = []
-            for record in records:
-                flat_record = {
-                    "gender": record.get("gender"),
-                    "title": record.get("name", {}).get("title"),
-                    "first_name": record.get("name", {}).get("first"),
-                    "last_name": record.get("name", {}).get("last"),
-                    "street_number": record.get("location", {}).get("street", {}).get("number"),
-                    "street_name": record.get("location", {}).get("street", {}).get("name"),
-                    "city": record.get("location", {}).get("city"),
-                    "state": record.get("location", {}).get("state"),
-                    "country": record.get("location", {}).get("country"),
-                    "postcode": record.get("location", {}).get("postcode"),
-                    "latitude": record.get("location", {}).get("coordinates", {}).get("latitude"),
-                    "longitude": record.get("location", {}).get("coordinates", {}).get("longitude"),
-                    "timezone_offset": record.get("location", {}).get("timezone", {}).get("offset"),
-                    "timezone_description": record.get("location", {}).get("timezone", {}).get("description"),
-                    "email": record.get("email"),
-                    "username": record.get("login", {}).get("username"),
-                    "password": record.get("login", {}).get("password"),
-                    "dob": record.get("dob", {}).get("date"),
-                    "age": record.get("dob", {}).get("age"),
-                    "registered_date": record.get("registered", {}).get("date"),
-                    "registered_age": record.get("registered", {}).get("age"),
-                    "phone": record.get("phone"),
-                    "cell": record.get("cell"),
-                    "picture_large": record.get("picture", {}).get("large"),
-                    "picture_medium": record.get("picture", {}).get("medium"),
-                    "picture_thumbnail": record.get("picture", {}).get("thumbnail"),
-                    "nationality": record.get("nat"),
-                }
-                flat_records.append(flat_record)
-
-            # Convert the flat records to a Pandas DataFrame
-            df = pd.DataFrame(flat_records)
-            df.to_csv(path_csv, index=False)
-
-        except (FileNotFoundError, json.JSONDecodeError) as e:
-            logger.error(f"Error reading JSON file: {e}")
-            return None
 
     def extend_data(self, num_records: int):
         """
