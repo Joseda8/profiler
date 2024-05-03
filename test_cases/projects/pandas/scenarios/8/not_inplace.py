@@ -45,7 +45,7 @@ logger.info(f"The required information was loaded successfully. Number of record
 #------- Operation
 set_tag("start_processing")
 
-# Filter users above 18 years
+# Filter users above 30 years
 df_users = df_users[df_users["dob.age"] > 30]
 # Order by age
 df_users = df_users.sort_values(by="dob.age")

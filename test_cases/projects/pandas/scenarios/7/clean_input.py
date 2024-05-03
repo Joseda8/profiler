@@ -49,7 +49,7 @@ set_tag("start_processing")
 
 # Convert 'location.country' column to lower case and remove spaces
 df_users["location.country"] = df_users["location.country"].str.lower().str.replace(" ", "")
-# Create new column 'nation_nickname' using apply
+# Create new column 'nation_nickname'
 df_users["nation_nickname"] = df_users["location.country"].map(lambda country: get_nickname(country))
 
 set_tag("finish_processing")

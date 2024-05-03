@@ -46,8 +46,8 @@ logger.info(f"The required information was loaded successfully. Number of record
 #------- Operation
 set_tag("start_processing")
 
-# Create new column 'nation_nickname' using apply
-df_users["nation_nickname"] = df_users["location.country"].apply(get_nickname_transform_input)
+# Create new column 'nation_nickname'
+df_users["nation_nickname"] = df_users["location.country"].map(get_nickname_transform_input)
 
 set_tag("finish_processing")
 

@@ -46,7 +46,7 @@ logger.info(f"The required information was loaded successfully. Number of record
 set_tag("start_processing")
 
 # Replace 'dob.age' with None
-ages_to_replace = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]
+ages_to_replace = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
 df_users.replace(ages_to_replace, None, inplace=True)
 
 set_tag("finish_processing")

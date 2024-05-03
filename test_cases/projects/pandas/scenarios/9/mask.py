@@ -46,7 +46,7 @@ logger.info(f"The required information was loaded successfully. Number of record
 set_tag("start_processing")
 
 # Replace 'dob.age' with None
-mask = df_users["dob.age"] <= 30
+mask = df_users["dob.age"] <= 25
 df_users["dob.age"] = df_users["dob.age"].mask(mask, None)
 
 set_tag("finish_processing")
