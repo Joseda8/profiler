@@ -3,7 +3,7 @@ This benchmark converts to datetime a column including the timezone.
 
 Benchmark Steps:
 1. Load user data into a Pandas DataFrame with a specified number of records.
-2. Convert the column registered_date to DateTime.
+2. Convert the column registered.date to DateTime.
 3. Measure and log the execution time for the operation.
 """
 
@@ -44,8 +44,8 @@ logger.info(f"The required information was loaded successfully. Number of record
 #------- Operation
 set_tag("start_processing")
 
-# Convert "registered_date" column to datetime
-df_users["registered_date"] = pd.to_datetime(df_users["registered_date"])
+# Convert "registered.date" column to datetime
+df_users["registered.date"] = pd.to_datetime(df_users["registered.date"])
 
 set_tag("finish_processing")
 

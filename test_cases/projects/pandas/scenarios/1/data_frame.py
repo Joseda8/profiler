@@ -47,7 +47,7 @@ set_tag("start_processing")
 df_female_users = df_users[df_users["gender"] == "female"]
 
 # Operation 2: Finding the average age of women per country in DataFrame
-df_average_age_female = df_female_users.groupby("country")["age"].mean().reset_index(name="average_age")
+df_average_age_female = df_female_users.groupby("location.country")["dob.age"].mean().reset_index(name="average_age")
 
 set_tag("finish_processing")
 

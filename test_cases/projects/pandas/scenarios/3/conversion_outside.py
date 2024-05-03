@@ -43,15 +43,15 @@ logger.info(f"The required information was loaded successfully. Number of record
 #------- Operation
 set_tag("start_processing")
 
-# Convert street_number and postcode to strings
-df_users["street_number"] = df_users["street_number"].astype(str)
-df_users["postcode"] = df_users["postcode"].astype(str)
+# Convert location.street.number and location.postcode to strings
+df_users["location.street.number"] = df_users["location.street.number"].astype(str)
+df_users["location.postcode"] = df_users["location.postcode"].astype(str)
 
 # Create address column by concatenating required fields
 df_users["address"] = (
-    df_users["street_name"] + " " + df_users["street_number"] + ", " +
-    df_users["postcode"] + " " + df_users["city"] + ", " +
-    df_users["state"] + ", " + df_users["country"]
+    df_users["location.street.name"] + " " + df_users["location.street.number"] + ", " +
+    df_users["location.postcode"] + " " + df_users["location.city"] + ", " +
+    df_users["location.state"] + ", " + df_users["location.country"]
 )
 
 set_tag("finish_processing")

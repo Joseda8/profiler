@@ -45,9 +45,9 @@ set_tag("start_processing")
 
 # Create address column by concatenating required fields
 df_users["address"] = (
-    df_users["street_name"] + " " + df_users["street_number"].astype(str) + ", " +
-    df_users["postcode"].astype(str) + " " + df_users["city"] + ", " +
-    df_users["state"] + ", " + df_users["country"]
+    df_users["location.street.name"] + " " + df_users["location.street.number"].astype(str) + ", " +
+    df_users["location.postcode"].astype(str) + " " + df_users["location.city"] + ", " +
+    df_users["location.state"] + ", " + df_users["location.country"]
 )
 
 set_tag("finish_processing")

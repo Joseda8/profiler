@@ -51,7 +51,7 @@ counter_countries = defaultdict(int)
 # Iterate over the DataFrame
 for index, row in df_users.iterrows():
     # Increment the count for the specific country
-    country = row["country"]
+    country = row["location.country"]
     counter_countries[country] += 1
 
 set_tag("finish_processing")

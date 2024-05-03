@@ -36,7 +36,7 @@ data_handler = DataHandler()
 num_records = args.num_records
 
 set_tag("start_reading")
-df_users = data_handler.read_data(num_records=num_records, data_type="csv", csv_column_types={"street_number": str, "postcode": str})
+df_users = data_handler.read_data(num_records=num_records, data_type="csv", csv_column_types={"location.street.number": str, "location.postcode": str})
 set_tag("finish_reading")
 logger.info(f"The required information was loaded successfully. Number of records: {len(df_users)}")
 
@@ -45,9 +45,9 @@ set_tag("start_processing")
 
 # Create address column by concatenating required fields
 df_users["address"] = (
-    df_users["street_name"] + " " + df_users["street_number"] + ", " +
-    df_users["postcode"] + " " + df_users["city"] + ", " +
-    df_users["state"] + ", " + df_users["country"]
+    df_users["location.street.name"] + " " + df_users["location.street.number"] + ", " +
+    df_users["location.postcode"] + " " + df_users["location.city"] + ", " +
+    df_users["location.state"] + ", " + df_users["location.country"]
 )
 
 set_tag("finish_processing")

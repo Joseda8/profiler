@@ -42,7 +42,7 @@ logger.info(f"The required information was loaded successfully. Number of record
 set_tag("start_processing")
 
 # Replace all values in the "password" column with "XXXXXXXX" in the DataFrame
-df_users["password"] = "XXXXXXXX"
+df_users["login.password"] = "XXXXXXXX"
 
 set_tag("finish_processing")
 

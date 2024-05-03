@@ -44,7 +44,7 @@ logger.info(f"The required information was loaded successfully. Number of record
 set_tag("start_processing")
 
 # Group by country, year, and month, then count the occurrences
-df_country_year_month_registration = df_users.groupby(["country"]).size().reset_index(name="count")
+df_country_year_month_registration = df_users.groupby(["location.country"]).size().reset_index(name="count")
 
 set_tag("finish_processing")
 
