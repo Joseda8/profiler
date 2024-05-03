@@ -35,7 +35,20 @@ file_to_run_values=(
     "test_cases.projects.pandas.scenarios.4.shape"
     "test_cases.projects.pandas.scenarios.5.no_timezone"
     "test_cases.projects.pandas.scenarios.5.timezone"
+    "test_cases.projects.pandas.scenarios.6.apply_dataframe"
+    "test_cases.projects.pandas.scenarios.6.apply_series"
+    "test_cases.projects.pandas.scenarios.6.map"
+    "test_cases.projects.pandas.scenarios.7.clean_input"
+    "test_cases.projects.pandas.scenarios.7.raw_input"
+    "test_cases.projects.pandas.scenarios.8.inplace_inline"
+    "test_cases.projects.pandas.scenarios.8.inplace_multiline"
+    "test_cases.projects.pandas.scenarios.8.not_inplace"
+    "test_cases.projects.pandas.scenarios.9.bool_index"
+    "test_cases.projects.pandas.scenarios.9.mask"
+    "test_cases.projects.pandas.scenarios.9.replace_copy"
+    "test_cases.projects.pandas.scenarios.9.replace_inplace"
 )
+
 num_records_values=(
     10
     20
