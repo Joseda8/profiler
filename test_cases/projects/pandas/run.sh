@@ -55,6 +55,8 @@ file_to_run_values=(
     "test_cases.projects.pandas.scenarios.10.inplace_three"
     "test_cases.projects.pandas.scenarios.11.subset"
     "test_cases.projects.pandas.scenarios.11.whole_set"
+    "test_cases.projects.pandas.scenarios.12.modin"
+    "test_cases.projects.pandas.scenarios.12.pandas"
 )
 
 num_records_values=(
