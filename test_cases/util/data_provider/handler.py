@@ -5,6 +5,7 @@ from typing import List, Union
 from itertools import cycle, islice
 
 import pandas as pd
+import modin.pandas as mpd
 
 from ...util.logger import logger
 from .downloader import DataDownloader
@@ -121,7 +122,7 @@ class DataHandler:
         except Exception as excep:
             logger.error(f"Failed extending CSV data: {excep}")
 
-    def read_data(self, num_records: int, data_type: str, csv_column_types: dict = None) -> Union[pd.DataFrame, List, None]:
+    def read_data(self, num_records: int, data_type: str, csv_column_types: dict = None, use_modin: bool = False) -> Union[pd.DataFrame, List, None]:
         """
         Read data from either CSV or JSON format.
 
@@ -129,6 +130,7 @@ class DataHandler:
             num_records (int): Number of records to read.
             data_type (str): Type of data to read. Can be 'csv' or 'json'.
             csv_column_types (dict): Optional argument to specify column types for CSV files.
+            use_moding (bool): Whether Modin should be used or not for the CSV reading.
 
         Returns:
             DataFrame or list: DataFrame if data_type is 'csv', list of dictionaries if data_type is 'json'.
@@ -139,10 +141,11 @@ class DataHandler:
         elif data_type == "csv":
             file_path = FILE_PATH_BASE_CSV.replace("5000", str(num_records))
             try:
+                read_csv = mpd.read_csv if use_modin else pd.read_csv
                 if csv_column_types:
-                    return pd.read_csv(file_path, dtype=csv_column_types)
+                    return read_csv(file_path, dtype=csv_column_types)
                 else:
-                    return pd.read_csv(file_path)
+                    return read_csv(file_path)
             except FileNotFoundError:
                 logger.error(f"CSV file not found: {file_path}")
                 return None
