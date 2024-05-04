@@ -47,6 +47,14 @@ file_to_run_values=(
     "test_cases.projects.pandas.scenarios.9.mask"
     "test_cases.projects.pandas.scenarios.9.replace_copy"
     "test_cases.projects.pandas.scenarios.9.replace_inplace"
+    "test_cases.projects.pandas.scenarios.10.copy_all"
+    "test_cases.projects.pandas.scenarios.10.copy_one"
+    "test_cases.projects.pandas.scenarios.10.copy_three"
+    "test_cases.projects.pandas.scenarios.10.inplace_all"
+    "test_cases.projects.pandas.scenarios.10.inplace_one"
+    "test_cases.projects.pandas.scenarios.10.inplace_three"
+    "test_cases.projects.pandas.scenarios.11.subset"
+    "test_cases.projects.pandas.scenarios.11.whole_set"
 )
 
 num_records_values=(
