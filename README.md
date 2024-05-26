@@ -1,22 +1,29 @@
 # System Profiler
-## _Collect and record the behavior of a Python program_
+## _Collect and record the behavior of a program_
 
-The System Profiler is a Python-based tool designed to measure the performance and resource usage of a given Python program or module. It collects various system statistics such as CPU usage, RAM usage, and more, providing insights into the behavior and resource utilization of the target process.
+This profilers is a Python-based tool designed to measure the performance and resource usage of a program. Right now it supports the profiling of Python programs as scripts or modules.
 
-> For now the project has been tested only on `Linux/Fedora 37`.
+It collects various system statistics such as CPU usage, memory usage and execution time.
+
+The profiler collects stats with an ideal sampling rate of 100ms. Also, since it triggers the process to profile without being part of it, the profiling process has a very low overhead.
+
+> For now the project has been tested only on a virtual machine with `Linux/Fedora 37`.
 
 ## Features
 
-- **Comprehensive Performance Measurement**: The profiler gathers a wide range of system metrics, including CPU usage, RAM usage, and core-specific CPU usage.
-- **Flexible Usage**: Users can specify the Python script or module to profile along with optional arguments, allowing for customizable profiling sessions.
-- **Real-time Monitoring**: The profiler continuously monitors the target process, providing real-time statistics during its execution.
-- **Detailed Reporting**: Profiling results are saved in CSV format for easy analysis, and output logs are captured for comprehensive reporting.
-
-> Note: Notice that the project contains a `requirements.txt` file.
+- **Performance Measurement**: The profiler gathers the next system metrics:
+    - Execution time.
+    - CPU usage.
+    - CPU usage per core (of the whole system and not only of the process to profile).
+    - RAM usage.
+    - Virtual memory usage.
+    - Swap usage.
+- **Detailed Reports**: Profiling results are saved in CSV format to facilitate post-processing analysis. Additionally, the standard output of the program is captured and stored in a text file.
+- **Post-processing interface**: The profiler contains an interface offering some tools to process the CSV file obtained from the profiling process.
 
 ## Usage
 
-To profile a Python script or module, use the following command-line interface:
+To profile a Python script or module, use the following command-line command:
 
 ```bash
 python3 -m src.main --file_to_run <file_or_module_name> [--is_module] [--script_args <optional_args>]
