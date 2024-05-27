@@ -1,12 +1,9 @@
+import glob
+
 from src.client_interface import FileStats
 from ....util import FileWriterCsv
 
-stats_threads_1 = FileStats(file_path="//preprocessed/threads_1__stats.csv")
-stats_threads_2 = FileStats(file_path="//preprocessed/threads_2__stats.csv")
-stats_threads_4 = FileStats(file_path="//preprocessed/threads_4__stats.csv")
-stats_threads_6 = FileStats(file_path="//preprocessed/threads_6__stats.csv")
-files_stats = [stats_threads_1, stats_threads_2, stats_threads_4, stats_threads_6]
-
+files_stats = [FileStats(file_path=path) for path in glob.glob("results/preprocessed/threads_*.csv")]
 csv_writer = FileWriterCsv(file_path="results/threads_results.csv")
 csv_writer.set_columns(columns=["num_threads", "uptime", "cpu_usage", "vms", "ram", "swap", "min_vms", "max_vms", "min_ram", "max_ram", "min_swap", "max_swap", "cores_disparity", "time_not_dominant_core"])
 
