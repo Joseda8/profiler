@@ -50,7 +50,6 @@ class SystemStatsCollector:
                    Returns None if the process with the given PID does not exist.
         """
         try:
-            self._process
             cpu_usage = self._process.cpu_percent(interval=0.0) / self._cpu_count
             return cpu_usage
         except psutil.NoSuchProcess:
@@ -85,7 +84,6 @@ class SystemStatsCollector:
             Returns None if the process with the given PID does not exist.
         """
         try:
-            self._process
             memory_usage = self._process.memory_full_info()
             # Convert values to GB
             virtual_memory_usage = memory_usage.vms / (1024 ** 3)
