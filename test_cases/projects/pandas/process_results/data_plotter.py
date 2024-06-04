@@ -68,10 +68,10 @@ class DataPlotter:
             title (str): Title of the plot.
         """
         # Plotting configurations
-        plt.figure(figsize=(14, 9))
+        plt.figure(figsize=(16, 9))
         plt.title(title, fontsize=25)
-        plt.xlabel(x_column, fontsize=15)
-        plt.ylabel(y_column, fontsize=15)
+        plt.xlabel(x_column, fontsize=20)
+        plt.ylabel(y_column, fontsize=20)
 
         # Iterate through each group and plot
         for name, group in self._df_grouped:
@@ -79,10 +79,10 @@ class DataPlotter:
             plt.plot(group[x_column], group[y_column], marker="o", linestyle="-", label=name)
             plt.xlim(group[x_column].min(), group[x_column].max())
         # Extra configurations
-        plt.xticks(self._num_records, fontsize=14)
-        plt.yticks(fontsize=14)
+        plt.xticks(self._num_records, fontsize=16)
+        plt.yticks(fontsize=16)
         plt.xscale("log")
-        plt.legend(loc="best", fontsize=15)
+        plt.legend(loc="best", fontsize=20)
         plt.grid(True)
         # Save graph
         self._save_plot(plt.gcf(), f"{self._file_stats_name}_{y_column}.png")
@@ -102,7 +102,7 @@ class DataPlotter:
 
         for name, group in self._df_grouped:
             # Create a larger figure
-            plt.figure(figsize=(14, 9))
+            plt.figure(figsize=(16, 9))
             group = group.sort_values(by=x_column)
             # Update each column in the list with proportions scaled to percentage
             total_time = group[y_columns].sum(axis=1)
@@ -119,11 +119,11 @@ class DataPlotter:
                 plt.bar(current_bar_group, group[column], width=bar_width, label=column)
             
             # Add graph configurations
-            plt.xlabel(x_column, fontsize=15)
-            plt.xticks(bar_groups, self._num_records, fontsize=14)
-            plt.yticks(fontsize=14)
+            plt.xlabel(x_column, fontsize=20)
+            plt.xticks(bar_groups, self._num_records, fontsize=16)
+            plt.yticks(fontsize=16)
             plt.title(title, fontsize=25)
-            plt.legend(loc="best", fontsize=15)
+            plt.legend(loc="best", fontsize=20)
 
             # Save graph
             title_clean = title.lower().replace(" ", "_")
