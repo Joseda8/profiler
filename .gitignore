@@ -3,6 +3,7 @@
 *.csv
 *.json
 *.svg
+*.png
 
 # Ignore any other temporary files, such as .pyc files
 __pycache__/

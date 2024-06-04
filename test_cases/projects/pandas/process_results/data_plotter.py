@@ -43,17 +43,17 @@ class DataPlotter:
 
     def _save_plot(self, plot: Figure, file_name: str) -> None:
         """
-        Save the current plot to an SVG file.
+        Save the current plot to an PNG file.
 
         Args:
             plot (Figure): The matplotlib plot to save.
-            file_name (str): The name of the SVG file to save.
+            file_name (str): The name of the PNG file to save.
         """
-        # Define the full path for saving the SVG file
-        svg_file_path = os.path.join(self._folder_results, file_name)
+        # Define the full path for saving the PNG file
+        png_file_path = os.path.join(self._folder_results, file_name)
         
-        # Save the plot as an SVG file using the specified file path
-        plot.savefig(svg_file_path, format="svg")
+        # Save the plot as an PNG file using the specified file path
+        plot.savefig(png_file_path, format="png")
         
         # Close the plot to release memory resources
         plt.close(plot)
@@ -68,10 +68,10 @@ class DataPlotter:
             title (str): Title of the plot.
         """
         # Plotting configurations
-        plt.figure(figsize=(15, 9))
-        plt.title(title)
-        plt.xlabel(x_column)
-        plt.ylabel(y_column)
+        plt.figure(figsize=(14, 9))
+        plt.title(title, fontsize=25)
+        plt.xlabel(x_column, fontsize=15)
+        plt.ylabel(y_column, fontsize=15)
 
         # Iterate through each group and plot
         for name, group in self._df_grouped:
@@ -79,12 +79,13 @@ class DataPlotter:
             plt.plot(group[x_column], group[y_column], marker="o", linestyle="-", label=name)
             plt.xlim(group[x_column].min(), group[x_column].max())
         # Extra configurations
-        plt.xticks(self._num_records)
+        plt.xticks(self._num_records, fontsize=14)
+        plt.yticks(fontsize=14)
         plt.xscale("log")
-        plt.legend(loc="best")
+        plt.legend(loc="best", fontsize=15)
         plt.grid(True)
         # Save graph
-        self._save_plot(plt.gcf(), f"{self._file_stats_name}_{y_column}.svg")
+        self._save_plot(plt.gcf(), f"{self._file_stats_name}_{y_column}.png")
 
     def plot_bar_graphs(self, x_column: str, y_columns: List[str], title: str):
         """
@@ -101,7 +102,7 @@ class DataPlotter:
 
         for name, group in self._df_grouped:
             # Create a larger figure
-            plt.figure(figsize=(15, 9))
+            plt.figure(figsize=(14, 9))
             group = group.sort_values(by=x_column)
             # Update each column in the list with proportions scaled to percentage
             total_time = group[y_columns].sum(axis=1)
@@ -118,11 +119,12 @@ class DataPlotter:
                 plt.bar(current_bar_group, group[column], width=bar_width, label=column)
             
             # Add graph configurations
-            plt.xlabel(x_column)
-            plt.xticks(bar_groups, self._num_records)
-            plt.title(title)
-            plt.legend(loc="best")
+            plt.xlabel(x_column, fontsize=15)
+            plt.xticks(bar_groups, self._num_records, fontsize=14)
+            plt.yticks(fontsize=14)
+            plt.title(title, fontsize=25)
+            plt.legend(loc="best", fontsize=15)
 
             # Save graph
             title_clean = title.lower().replace(" ", "_")
-            self._save_plot(plt.gcf(), f"{self._file_stats_name}_{title_clean}_{name}.svg")
+            self._save_plot(plt.gcf(), f"{self._file_stats_name}_{title_clean}_{name}.png")
