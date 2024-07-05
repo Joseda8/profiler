@@ -6,6 +6,7 @@ import pandas as pd
 
 from src.client_interface import FileStats
 from .const import *
+from .data_plotter import DataPlotter
 from .....util import FileWriterCsv, logger
 
 
@@ -90,6 +91,22 @@ class FilesStats:
             # Normalize more efficient value per category
             self._normalize_results(df_result=csv_writer.df_data, scenario_name=scenario_name)
         
+        # After processing all files, create graphs for each scenario
+        logger.info("Creating plots...")
+        for scenario_id, _ in files_info:
+            scenario_file_path = os.path.join(self._path_output, f"scenario_{scenario_id}.csv")
+            plotter = DataPlotter(path_file_stats=scenario_file_path, folder_results=FOLDER_RESULTS_GRAPHS)
+            # Plot various graphs for the scenario CSV
+            for column in ["time_processing", "avg_cpu_usage", "avg_vm", "avg_ram", "avg_swap",
+                           "min_vm", "max_vm", "min_ram", "max_ram", "min_swap", "max_swap", "core_changes_by_time", "cores_disparity_avg", "energy_consumption"]:
+                title = column.replace("_", " ").title() + " vs Number of Records"
+                plotter.plot_line_graph(x_column="num_records", y_column=column, title=title)
+            # Graph times
+            time_columns = [col for col in plotter.stats_columns if col.startswith("time_") and col != f"time_{LABEL_PROGRAM}" and col != "time_with_dominant_core" and col != "time_not_dominant_core"]
+            plotter.plot_bar_graphs(x_column="num_records", y_columns=time_columns, title="Time proportion per time")
+            plotter.plot_bar_graphs(x_column="num_records", y_columns=["time_not_dominant_core", "time_with_dominant_core"], title="Time proportion with dominant core")
+        logger.info("Graphs created successfully.")
+
     def _normalize_results(self, df_result: pd.DataFrame, scenario_name: str) -> Tuple[List[Any], List[str]]:
         """
         Process a results file to determine to most efficient approach of each
