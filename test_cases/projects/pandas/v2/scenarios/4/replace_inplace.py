@@ -1,12 +1,10 @@
 """
-This benchmark filters female users, groups them by country, and computes the 
-average age of women per country in a Pandas DataFrame.
+This benchmark substitutes the values in the `gender` column by using the replace method with inplace operation.
 
 Benchmark Steps:
 1. Load user data into a Pandas DataFrame with a specified number of records.
-2. Filter female users and group them by country in the DataFrame.
-3. Find the average age of women per country in the DataFrame.
-4. Measure and log the execution time for the operation.
+2. Replace "female" with "F" and "male" with "M" in the `gender` column using the `replace` method with inplace operation.
+3. Measure and log the execution time for the operation.
 """
 
 import argparse
@@ -14,6 +12,7 @@ import time
 import os
 
 from src.client_interface import set_tag, set_output_filename
+
 from ......util import DataHandler, logger, get_scenario_name
 
 
@@ -34,6 +33,7 @@ set_tag("start_program")
 
 #------- Extract data
 data_handler = DataHandler()
+num_records = args.num_records
 
 set_tag("start_reading")
 df_users = data_handler.read_data(num_records=num_records, data_type="csv")
@@ -43,11 +43,8 @@ logger.info(f"The required information was loaded successfully. Number of record
 #------- Operation
 set_tag("start_processing")
 
-# Filter female users
-df_female_users = df_users[df_users["gender"] == "female"]
-
-# Find the average age of women per country in DataFrame
-df_average_age_female = df_female_users.groupby("location.country")["dob.age"].mean().reset_index(name="average_age")
+# Replace "female" with "F" and "male" with "M" in the "gender" column
+df_users["gender"].replace({"female": "F", "male": "M"}, inplace=True)
 
 set_tag("finish_processing")
 

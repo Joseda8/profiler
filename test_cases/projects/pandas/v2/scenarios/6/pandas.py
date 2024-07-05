@@ -1,12 +1,9 @@
 """
-This benchmark filters female users, groups them by country, and computes the 
-average age of women per country in a Pandas DataFrame.
+This benchmark reads a CSV file using Pandas.
 
 Benchmark Steps:
 1. Load user data into a Pandas DataFrame with a specified number of records.
-2. Filter female users and group them by country in the DataFrame.
-3. Find the average age of women per country in the DataFrame.
-4. Measure and log the execution time for the operation.
+3. Measure and log the execution time for the operation.
 """
 
 import argparse
@@ -14,6 +11,7 @@ import time
 import os
 
 from src.client_interface import set_tag, set_output_filename
+
 from ......util import DataHandler, logger, get_scenario_name
 
 
@@ -34,22 +32,16 @@ set_tag("start_program")
 
 #------- Extract data
 data_handler = DataHandler()
-
-set_tag("start_reading")
-df_users = data_handler.read_data(num_records=num_records, data_type="csv")
-set_tag("finish_reading")
-logger.info(f"The required information was loaded successfully. Number of records: {len(df_users)}")
+num_records = args.num_records
 
 #------- Operation
 set_tag("start_processing")
-
-# Filter female users
-df_female_users = df_users[df_users["gender"] == "female"]
-
-# Find the average age of women per country in DataFrame
-df_average_age_female = df_female_users.groupby("location.country")["dob.age"].mean().reset_index(name="average_age")
-
+set_tag("start_reading")
+df_users = data_handler.read_data(num_records=num_records, data_type="csv")
+set_tag("finish_reading")
 set_tag("finish_processing")
+
+logger.info(f"The required information was loaded successfully. Number of records: {len(df_users)}")
 
 # Idle time to ensure some last measures are taken
 set_tag("finish_program")

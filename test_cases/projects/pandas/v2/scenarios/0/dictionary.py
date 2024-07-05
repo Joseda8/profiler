@@ -44,7 +44,7 @@ logger.info(f"The required information was loaded successfully. Number of record
 #------- Operation
 set_tag("start_processing")
 
-# Operation 1: Filtering female users and grouping by country in the list
+# Filter female users and grouping by country in the list
 filtered_female_list = [user for user in json_users if user["gender"] == "female"]
 grouped_female_dict = {}
 for user in filtered_female_list:
@@ -56,7 +56,7 @@ for user in filtered_female_list:
         grouped_female_dict[country]["count"] += 1
         grouped_female_dict[country]["age_sum"] += age
 
-# Operation 2: Finding the average age of women per country in the list
+# Find the average age of women per country in the list
 average_age_female_dict = {}
 for country, data in grouped_female_dict.items():
     average_age_female_dict[country] = data["age_sum"] / data["count"]

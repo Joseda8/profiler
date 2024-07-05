@@ -19,13 +19,27 @@ function matches_any_pattern() {
 # List of scenarios to exclude to check against
 excluded_scenarios=(
     "test_cases.projects.pandas.v2.scenarios.0.*"
-    "test_cases.projects.pandas.v2.scenarios.1.*"
 )
 
 # Define arrays of values
 file_to_run_values=(
     "test_cases.projects.pandas.v2.scenarios.0.data_frame"
     "test_cases.projects.pandas.v2.scenarios.0.dictionary"
+    "test_cases.projects.pandas.v2.scenarios.1.clean_input"
+    "test_cases.projects.pandas.v2.scenarios.1.raw_input"
+    "test_cases.projects.pandas.v2.scenarios.2.copy"
+    "test_cases.projects.pandas.v2.scenarios.2.inplace"
+    "test_cases.projects.pandas.v2.scenarios.3.subset"
+    "test_cases.projects.pandas.v2.scenarios.3.whole_set"
+    "test_cases.projects.pandas.v2.scenarios.4.bool_index"
+    "test_cases.projects.pandas.v2.scenarios.4.map"
+    "test_cases.projects.pandas.v2.scenarios.4.mask"
+    "test_cases.projects.pandas.v2.scenarios.4.replace_copy"
+    "test_cases.projects.pandas.v2.scenarios.4.replace_inplace"
+    "test_cases.projects.pandas.v2.scenarios.5.mask"
+    "test_cases.projects.pandas.v2.scenarios.5.query"
+    "test_cases.projects.pandas.v2.scenarios.6.modin"
+    "test_cases.projects.pandas.v2.scenarios.6.pandas"
 )
 
 num_records_values=(

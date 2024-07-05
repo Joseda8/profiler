@@ -1,12 +1,12 @@
 """
-This benchmark filters female users, groups them by country, and computes the 
-average age of women per country in a Pandas DataFrame.
+This benchmark performs a series of DataFrame operations using not inplace methods.
 
 Benchmark Steps:
 1. Load user data into a Pandas DataFrame with a specified number of records.
-2. Filter female users and group them by country in the DataFrame.
-3. Find the average age of women per country in the DataFrame.
-4. Measure and log the execution time for the operation.
+2. Rename the column `location.street.number` to `street_number`.
+3. Sort the DataFrame by the `dob.age` column.
+4. Reset the index of the DataFrame.
+5. Measure and log the execution time for the operation.
 """
 
 import argparse
@@ -14,6 +14,7 @@ import time
 import os
 
 from src.client_interface import set_tag, set_output_filename
+
 from ......util import DataHandler, logger, get_scenario_name
 
 
@@ -34,6 +35,7 @@ set_tag("start_program")
 
 #------- Extract data
 data_handler = DataHandler()
+num_records = args.num_records
 
 set_tag("start_reading")
 df_users = data_handler.read_data(num_records=num_records, data_type="csv")
@@ -43,11 +45,12 @@ logger.info(f"The required information was loaded successfully. Number of record
 #------- Operation
 set_tag("start_processing")
 
-# Filter female users
-df_female_users = df_users[df_users["gender"] == "female"]
-
-# Find the average age of women per country in DataFrame
-df_average_age_female = df_female_users.groupby("location.country")["dob.age"].mean().reset_index(name="average_age")
+# Rename a column
+df_users = df_users.rename(columns={"location.street.number": "street_number"})
+# Order by age
+df_users = df_users.sort_values(by="dob.age")
+# Reset index
+df_users = df_users.reset_index(drop=True)
 
 set_tag("finish_processing")
 

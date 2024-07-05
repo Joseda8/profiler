@@ -37,8 +37,8 @@ while process.poll() is None:
     if stats_collected is not None:
         file_stats.append_row(row_data=stats_collected)
         logger.debug(f"New records were successfully written.")
-    # Sampling time of 100ms
-    sleep(0.1)
+    # Sampling time of 50ms
+    sleep(0.05)
 
 # ------- Post-run process
 # Write profiling results file

@@ -43,6 +43,9 @@ logger.info(f"The required information was loaded successfully. Number of record
 #------- Operation
 set_tag("start_processing")
 
+# Select only necessary columns
+df_users = df_users[["gender", "location.country", "dob.age"]]
+
 # Filter female users
 df_female_users = df_users[df_users["gender"] == "female"]
 
