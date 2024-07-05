@@ -15,13 +15,13 @@ class FileWriterCsv:
             file_path (str): The path to the CSV file.
         """
         self._file_path = file_path
-        self._df_data = pd.DataFrame()
+        self.df_data = pd.DataFrame()
 
     def have_columns(self) -> bool:
         """
         Check if columns were already assigned.
         """
-        return len(self._df_data.columns) > 0
+        return len(self.df_data.columns) > 0
 
     def set_columns(self, columns: List[str]) -> None:
         """
@@ -30,9 +30,9 @@ class FileWriterCsv:
         Args:
             columns (List[str]): List of column names.
         """
-        if not self._df_data.empty:
+        if not self.df_data.empty:
             raise ValueError("Columns cannot be set once data has been appended.")
-        self._df_data = pd.DataFrame(columns=columns)
+        self.df_data = pd.DataFrame(columns=columns)
 
     def append_row(self, row_data: List[Any]) -> None:
         """
@@ -43,13 +43,13 @@ class FileWriterCsv:
         """
         if not self.have_columns():
             raise ValueError("Columns must be set before appending rows.")
-        new_row = pd.DataFrame([row_data], columns=self._df_data.columns)
+        new_row = pd.DataFrame([row_data], columns=self.df_data.columns)
         # If data is empty, directly assign to it
-        if self._df_data.empty:
-            self._df_data = new_row
+        if self.df_data.empty:
+            self.df_data = new_row
         # If not empty, concatenate normally
         else:
-            self._df_data = pd.concat([self._df_data, new_row], ignore_index=True)
+            self.df_data = pd.concat([self.df_data, new_row], ignore_index=True)
 
     def append_rows(self, rows_data: List[List[Any]]) -> None:
         """
@@ -60,13 +60,13 @@ class FileWriterCsv:
         """
         if not self.have_columns():
             raise ValueError("Columns must be set before appending rows.")
-        new_rows = pd.DataFrame(rows_data, columns=self._df_data.columns)
+        new_rows = pd.DataFrame(rows_data, columns=self.df_data.columns)
         # If data is empty, directly assign to it
-        if self._df_data.empty:
-            self._df_data = new_rows
+        if self.df_data.empty:
+            self.df_data = new_rows
         # If not empty, concatenate normally
         else:
-            self._df_data = pd.concat([self._df_data, new_rows], ignore_index=True)
+            self.df_data = pd.concat([self.df_data, new_rows], ignore_index=True)
 
     def order_by_columns(self, columns: List[str]) -> None:
         """
@@ -78,19 +78,30 @@ class FileWriterCsv:
         if not self.have_columns():
             raise ValueError("Columns must be set before ordering.")
         for column_name in columns:
-            if column_name not in self._df_data.columns:
+            if column_name not in self.df_data.columns:
                 raise ValueError(f"Column '{column_name}' does not exist in the DataFrame.")
-        self._df_data = self._df_data.sort_values(by=columns)
+        self.df_data = self.df_data.sort_values(by=columns)
 
     def write_to_csv(self) -> None:
         """
         Write the data to a CSV file.
         """
-        if self._df_data.empty:
+        if self.df_data.empty:
             raise ValueError("No data to write.")
         
         directory = os.path.dirname(self._file_path)
         if not os.path.exists(directory):
             os.makedirs(directory)
         
-        self._df_data.to_csv(self._file_path, index=False)
+        self.df_data.to_csv(self._file_path, index=False)
+
+    def set_data_frame(self, df: pd.DataFrame) -> None:
+        """
+        Set the DataFrame for the FileWriterCsv instance.
+
+        Args:
+            df (pd.DataFrame): The DataFrame to set.
+        """
+        if not df.empty and not self.df_data.empty:
+            raise ValueError("DataFrame cannot be set once data has been appended.")
+        self.df_data = df
