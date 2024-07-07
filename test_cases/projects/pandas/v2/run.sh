@@ -31,15 +31,10 @@ file_to_run_values=(
     "test_cases.projects.pandas.v2.scenarios.2.inplace"
     "test_cases.projects.pandas.v2.scenarios.3.subset"
     "test_cases.projects.pandas.v2.scenarios.3.whole_set"
-    "test_cases.projects.pandas.v2.scenarios.4.bool_index"
-    "test_cases.projects.pandas.v2.scenarios.4.map"
     "test_cases.projects.pandas.v2.scenarios.4.mask"
-    "test_cases.projects.pandas.v2.scenarios.4.replace_copy"
-    "test_cases.projects.pandas.v2.scenarios.4.replace_inplace"
-    "test_cases.projects.pandas.v2.scenarios.5.mask"
-    "test_cases.projects.pandas.v2.scenarios.5.query"
-    "test_cases.projects.pandas.v2.scenarios.6.modin"
-    "test_cases.projects.pandas.v2.scenarios.6.pandas"
+    "test_cases.projects.pandas.v2.scenarios.4.query"
+    "test_cases.projects.pandas.v2.scenarios.5.modin"
+    "test_cases.projects.pandas.v2.scenarios.5.pandas"
 )
 
 num_records_values=(

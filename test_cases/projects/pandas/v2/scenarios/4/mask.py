@@ -1,12 +1,10 @@
 """
-This benchmark substitutes the values in the `gender` column for the users
-by using the `mask` function.
+This benchmark applies a filtering using a mask.
 
 Benchmark Steps:
-1. Load user data into a Pandas DataFrame with a specified number of records.
-2. Generate a mask for "female" and "male" values in the `gender` column.
-3. Substitute "female" with "F" and "male" with "M" using the `mask` function.
-4. Measure and log the execution time for the operation.
+1. Load user data into a pandas DataFrame with a specified number of records.
+2. Filter male users over the age of 50 with names starting with "R" using the mask method.
+3. Measure and log the execution time for the filtering operation.
 """
 
 import argparse
@@ -45,9 +43,9 @@ logger.info(f"The required information was loaded successfully. Number of record
 #------- Operation
 set_tag("start_processing")
 
-# Replace "female" with "F" and "male" with "M" in the "gender" column
-df_users["gender"] = df_users["gender"].mask(df_users["gender"] == "female", "F")
-df_users["gender"] = df_users["gender"].mask(df_users["gender"] == "male", "M")
+# Filter male users older than 50 with names starting with "R"
+mask = (df_users["gender"] == "male") & (df_users["dob.age"] > 50) & (df_users["name.first"].str.startswith("R"))
+df_males_50_r = df_users[mask]
 
 set_tag("finish_processing")
 
