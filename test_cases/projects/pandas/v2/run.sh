@@ -33,8 +33,6 @@ file_to_run_values=(
     "test_cases.projects.pandas.v2.scenarios.3.whole_set"
     "test_cases.projects.pandas.v2.scenarios.4.mask"
     "test_cases.projects.pandas.v2.scenarios.4.query"
-    "test_cases.projects.pandas.v2.scenarios.5.modin"
-    "test_cases.projects.pandas.v2.scenarios.5.pandas"
 )
 
 num_records_values=(
