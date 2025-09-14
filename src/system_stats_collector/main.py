@@ -3,6 +3,7 @@ from typing import List, Optional, Tuple
 import psutil
 
 from .const import KEYWORD_CPU_USAGE_PER_CORE, TEMPLATE_USAGE_PER_CORE, VALUES_TO_MEASURE
+from .energy_stats_collector import EnergyStatsCollector
 from src.util import DatetimeHelper
 from src.util import logger
 
@@ -22,6 +23,7 @@ class SystemStatsCollector:
         self._pid = pid
         self._cpu_count = SystemStatsCollector.get_cpu_count()
         self._process = psutil.Process(pid)
+        self._energy_collector = EnergyStatsCollector()
 
     @staticmethod
     def get_values_to_measure() -> List[str]:
@@ -130,6 +132,21 @@ class SystemStatsCollector:
         timestamp = DatetimeHelper.current_datetime(from_the_epoch=True)
         return timestamp
 
+    def get_energy_consumption(self) -> Optional[float]:
+        """
+        Get the cumulative energy reading in µJoules.
+
+        This value is NOT per process.
+
+        Returns:
+            Optional[float]: Cumulative energy in µJ. None on failure.
+        """
+        try:
+            return self._energy_collector.read_energy()
+        except Exception as excep:
+            logger.error(f"Failed to read energy: {excep}")
+            return None
+
     def collect_stats(self) -> Optional[List]:
         """
         Collect stats for the current process.
@@ -142,10 +159,11 @@ class SystemStatsCollector:
         cpu_usage = self.get_cpu_usage()
         cpu_usage_per_core = SystemStatsCollector.get_cpu_usage_per_core()
         memory_usage = self.get_memory_usage()
-        
+        energy_consumption = self.get_energy_consumption()
+
         # Return the measurements if all of them were successfully collected
-        if execution_time is not None and cpu_usage is not None and cpu_usage_per_core is not None and memory_usage is not None:
-            new_stats = [execution_time, cpu_usage] + cpu_usage_per_core + list(memory_usage)
+        if execution_time is not None and cpu_usage is not None and cpu_usage_per_core is not None and memory_usage is not None and energy_consumption is not None:
+            new_stats = [execution_time, cpu_usage] + cpu_usage_per_core + list(memory_usage) + [energy_consumption]
             return new_stats
         else:
             return None
