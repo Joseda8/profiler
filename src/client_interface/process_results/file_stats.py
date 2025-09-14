@@ -264,3 +264,12 @@ class FileStats:
                 max_usage = row[core]
                 dominant_core = idx
         return dominant_core
+
+    def replace_cpu_usage_with_core_average(self) -> None:
+        """
+        Replace the CPU usage column with the average of all core usage columns.
+
+        This method overrides the existing CSV_STATS_COL_NAME_CPU_USAGE column
+        in the dataframe with the mean of the core usage columns.
+        """
+        self._df_stats[CSV_STATS_COL_NAME_CPU_USAGE] = self._df_stats[self._core_columns].mean(axis=1)

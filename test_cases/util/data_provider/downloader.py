@@ -1,4 +1,3 @@
-import csv
 import json
 import requests
 from ...util.logger import logger
