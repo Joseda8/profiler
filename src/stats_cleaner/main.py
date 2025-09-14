@@ -1,7 +1,10 @@
 from typing import Dict, List, Tuple
+
 import csv
+
 from src.const import PREFIX_MEASURE_TAG, PREFIX_MEASURE_TAG_FILE_NAME
 from src.util import FileWriterCsv
+from src.system_stats_collector.energy_stats_collector import EnergyStatsCollector, EnergyUnit
 
 
 class StatsCleaner:
@@ -84,6 +87,43 @@ class StatsCleaner:
         for row in self._rows_stats:
             row["uptime"] = float(row["uptime"]) - process_creation_time
 
+    def normalize_consumed_energy(self) -> None:
+        """
+        Recompute the consumed energy values using the first row as the baseline.
+
+        Returns:
+            None
+        """
+        # Nothing to do if there are no rows
+        if not self._rows_stats:
+            return
+
+        # Ensure the energy_consumed column exists in file columns
+        if "energy_consumed" not in self._file_columns:
+            self._file_columns.append("energy_consumed")
+
+        # Initialize missing/empty energy values to zero and coerce to float
+        for row in self._rows_stats:
+            value = row.get("energy_consumed", "")
+            if value is None or str(value).strip() == "":
+                row["energy_consumed"] = 0.0
+            else:
+                try:
+                    row["energy_consumed"] = float(value)
+                except Exception:
+                    row["energy_consumed"] = 0.0
+
+        # Use the first row's value as the baseline
+        baseline_energy = float(self._rows_stats[0]["energy_consumed"])
+        # Recompute deltas
+        energy_collector = EnergyStatsCollector()
+        for row in self._rows_stats:
+            current_energy = float(row["energy_consumed"])
+            row["energy_consumed"] = energy_collector.energy_delta(start_energy_uj=baseline_energy, end_energy_uj=current_energy, unit=EnergyUnit.UNIT)
+        # First row must be exactly zero
+        self._rows_stats[0]["energy_consumed"] = 0.0
+
+
     def run(self, output_csv_path: str, process_creation_time: float) -> None:
         """
         Run the cleaning process.
@@ -103,6 +143,9 @@ class StatsCleaner:
 
         # Convert uptime column to seconds from the start of the program
         self._update_uptime(process_creation_time=process_creation_time)
+
+        # Normalize energy consumption relative to first row
+        self.normalize_consumed_energy()
 
         # Add possible filename prefix to the output CSV
         output_csv_path_split = output_csv_path.split("/")

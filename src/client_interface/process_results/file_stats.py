@@ -34,7 +34,7 @@ class FileStats:
         Count the number of unique core identifiers (n) in the DataFrame based on column names.
 
         Args:
-            start_label (pd.DataFrame): The input DataFrame containing columns representing core usage.
+            df (pd.DataFrame): The input DataFrame containing columns representing core usage.
 
         Returns:
             int: The number of unique core identifiers found in the DataFrame column names.
@@ -122,8 +122,8 @@ class FileStats:
 
         Returns:
             Optional[Tuple[float, float, float, float]]: If both labels are found, returns a tuple containing
-            the average CPU usage, average virtual memory usage, average RAM usage,
-            and average swap usage between the labels. If either label is not found, returns None.
+            the average CPU usage, virtual memory usage, RAM usage, and swap usage between the labels. 
+            If either label is not found, returns None.
         """
         # Extract rows between start_label and finish_label indices
         df_between_labels = self._get_df_between_labels(start_label=start_label, finish_label=finish_label)
@@ -135,7 +135,7 @@ class FileStats:
         average_swap_usage = df_between_labels[CSV_STATS_COL_NAME_SWAP_USAGE].mean()
         return (average_cpu_usage, average_virtual_memory_usage, average_ram_usage, average_swap_usage)
 
-    def get_min_max_memory_stats(self, start_label: str, finish_label: str) -> Optional[Tuple[float, float, float, float, float, float]]:
+    def get_min_max_memory_stats(self, start_label: str, finish_label: str) -> Optional[Tuple[float, float, float, float, float, float, float, float]]:
         """
         Get the minimum and maximum memory stats between two labels.
 
@@ -146,9 +146,9 @@ class FileStats:
             finish_label (str): The finishing label.
 
         Returns:
-            Optional[Tuple[float, float, float, float]]: If both labels are found, returns a tuple containing
+            Optional[Tuple[float, float, float, float, float, float, float, float]]: If both labels are found, returns a tuple containing
             the minimum and maximum values of virtual memory usage, RAM usage,
-            and swap usage between the labels. If either label is not found, returns None.
+            swap usage and energy consumed between the labels. If either label is not found, returns None.
         """
         # Extract rows between start_label and finish_label indices
         df_between_labels = self._get_df_between_labels(start_label=start_label, finish_label=finish_label)
@@ -160,8 +160,9 @@ class FileStats:
         max_ram_usage = df_between_labels[CSV_STATS_COL_NAME_RAM_USAGE].max()
         min_swap_usage = df_between_labels[CSV_STATS_COL_NAME_SWAP_USAGE].min()
         max_swap_usage = df_between_labels[CSV_STATS_COL_NAME_SWAP_USAGE].max()
-
-        return (min_virtual_memory_usage, max_virtual_memory_usage, min_ram_usage, max_ram_usage, min_swap_usage, max_swap_usage)
+        min_energy_consumed = df_between_labels[CSV_STATS_COL_NAME_ENERGY_CONSUMED].min()
+        max_energy_consumed = df_between_labels[CSV_STATS_COL_NAME_ENERGY_CONSUMED].max()
+        return (min_virtual_memory_usage, max_virtual_memory_usage, min_ram_usage, max_ram_usage, min_swap_usage, max_swap_usage, min_energy_consumed, max_energy_consumed)
 
     def track_dominant_core_changes_between_labels(self, start_label: str, finish_label: str) -> Tuple[int, float, float]:
         """
@@ -181,7 +182,7 @@ class FileStats:
         # Compute load disparity
         df_between_labels["core_load_disparity"] = df_between_labels.apply(self._get_cores_load_disparity, axis=1)
         cores_disparity_avg = df_between_labels[df_between_labels["core_load_disparity"] > 0]["core_load_disparity"].mean()
-        cores_disparity_avg = 0 if cores_disparity_avg is np.NaN else cores_disparity_avg
+        cores_disparity_avg = 0 if cores_disparity_avg is np.nan else cores_disparity_avg
 
         # Dominant core changes and cumulative duration
         dominant_core_changes = 0
