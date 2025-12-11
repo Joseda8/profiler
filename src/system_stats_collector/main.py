@@ -147,6 +147,31 @@ class SystemStatsCollector:
             logger.error(f"Failed to read energy: {excep}")
             return None
 
+    def get_cpu_temperature(self) -> Optional[float]:
+        """
+        Get the current CPU package temperature in Celsius if available.
+
+        Returns:
+            Optional[float]: Temperature in °C, or None if unavailable.
+        """
+        try:
+            temps = psutil.sensors_temperatures()
+        except Exception as excep:
+            logger.error(f"Failed to read temperatures: {excep}")
+            return None
+
+        # Only read the CPU package temperature from the coretemp sensor group
+        core_temps = temps.get("coretemp")
+        if not core_temps:
+            return None
+
+        # Read CPU package
+        package_temp = next(
+            (entry.current for entry in core_temps if entry.label and entry.label.lower().startswith("package id 0")),
+            None,
+        )
+        return package_temp
+
     def collect_stats(self) -> Optional[List]:
         """
         Collect stats for the current process.
@@ -158,12 +183,13 @@ class SystemStatsCollector:
         execution_time = self.get_measure_timestamp()
         cpu_usage = self.get_cpu_usage()
         cpu_usage_per_core = SystemStatsCollector.get_cpu_usage_per_core()
+        cpu_temperature = self.get_cpu_temperature()
         memory_usage = self.get_memory_usage()
         energy_consumption = self.get_energy_consumption()
 
         # Return the measurements if all of them were successfully collected
         if execution_time is not None and cpu_usage is not None and cpu_usage_per_core is not None and memory_usage is not None and energy_consumption is not None:
-            new_stats = [execution_time, cpu_usage] + cpu_usage_per_core + list(memory_usage) + [energy_consumption]
+            new_stats = [execution_time, cpu_usage] + cpu_usage_per_core + list(memory_usage) + [energy_consumption, cpu_temperature]
             return new_stats
         else:
             return None
