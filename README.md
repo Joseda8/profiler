@@ -19,6 +19,7 @@ The profiler collects stats with an ideal sampling rate of 100ms. Also, since it
     - Virtual memory usage.
     - Swap usage.
     - Energy consumption (system-wide cumulative energy counter via Intel RAPL / `powercap-info v0.6.0-1`).
+    - CPU package temperature (from `coretemp` sensors when available).
 - **Detailed Reports**: Profiling results are saved in CSV format to facilitate post-processing analysis. Additionally, the standard output of the program is captured and stored in a text file.
 - **Post-processing interface**: The profiler contains an interface offering some tools to process the CSV file obtained from the profiling process.
 
