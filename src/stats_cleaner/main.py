@@ -156,5 +156,7 @@ class StatsCleaner:
         self._rows_stats = sorted(self._rows_stats, key=lambda row: float(row["uptime"]))
         file_writer = FileWriterCsv(file_path=output_csv_path)
         file_writer.set_columns(columns=self._file_columns)
-        file_writer.append_rows(rows_data=self._rows_stats)
+        # Convert dict rows to ordered lists matching columns
+        ordered_rows = [[row.get(col, "") for col in self._file_columns] for row in self._rows_stats]
+        file_writer.append_rows(rows_data=ordered_rows)
         file_writer.write_to_csv()

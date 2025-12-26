@@ -1,6 +1,6 @@
+import csv
 import os
 from typing import Any, List
-import pandas as pd
 
 class FileWriterCsv:
     """
@@ -15,13 +15,14 @@ class FileWriterCsv:
             file_path (str): The path to the CSV file.
         """
         self._file_path = file_path
-        self.df_data = pd.DataFrame()
+        self._columns: List[str] = []
+        self._rows: List[List[Any]] = []
 
     def have_columns(self) -> bool:
         """
         Check if columns were already assigned.
         """
-        return len(self.df_data.columns) > 0
+        return len(self._columns) > 0
 
     def set_columns(self, columns: List[str]) -> None:
         """
@@ -30,9 +31,9 @@ class FileWriterCsv:
         Args:
             columns (List[str]): List of column names.
         """
-        if not self.df_data.empty:
+        if self._rows:
             raise ValueError("Columns cannot be set once data has been appended.")
-        self.df_data = pd.DataFrame(columns=columns)
+        self._columns = list(columns)
 
     def append_row(self, row_data: List[Any]) -> None:
         """
@@ -43,13 +44,7 @@ class FileWriterCsv:
         """
         if not self.have_columns():
             raise ValueError("Columns must be set before appending rows.")
-        new_row = pd.DataFrame([row_data], columns=self.df_data.columns)
-        # If data is empty, directly assign to it
-        if self.df_data.empty:
-            self.df_data = new_row
-        # If not empty, concatenate normally
-        else:
-            self.df_data = pd.concat([self.df_data, new_row], ignore_index=True)
+        self._rows.append(list(row_data))
 
     def append_rows(self, rows_data: List[List[Any]]) -> None:
         """
@@ -60,13 +55,10 @@ class FileWriterCsv:
         """
         if not self.have_columns():
             raise ValueError("Columns must be set before appending rows.")
-        new_rows = pd.DataFrame(rows_data, columns=self.df_data.columns)
-        # If data is empty, directly assign to it
-        if self.df_data.empty:
-            self.df_data = new_rows
-        # If not empty, concatenate normally
-        else:
-            self.df_data = pd.concat([self.df_data, new_rows], ignore_index=True)
+        for row in rows_data:
+            if len(row) != len(self._columns):
+                raise ValueError("Row length does not match number of columns.")
+            self._rows.append(list(row))
 
     def order_by_columns(self, columns: List[str]) -> None:
         """
@@ -78,30 +70,22 @@ class FileWriterCsv:
         if not self.have_columns():
             raise ValueError("Columns must be set before ordering.")
         for column_name in columns:
-            if column_name not in self.df_data.columns:
-                raise ValueError(f"Column '{column_name}' does not exist in the DataFrame.")
-        self.df_data = self.df_data.sort_values(by=columns)
+            if column_name not in self._columns:
+                raise ValueError(f"Column '{column_name}' does not exist in the data.")
+        self._rows.sort(key=lambda row: tuple(row[self._columns.index(col)] for col in columns))
 
     def write_to_csv(self) -> None:
         """
         Write the data to a CSV file.
         """
-        if self.df_data.empty:
+        if not self._rows:
             raise ValueError("No data to write.")
         
         directory = os.path.dirname(self._file_path)
         if not os.path.exists(directory):
             os.makedirs(directory)
-        
-        self.df_data.to_csv(self._file_path, index=False)
 
-    def set_data_frame(self, df: pd.DataFrame) -> None:
-        """
-        Set the DataFrame for the FileWriterCsv instance.
-
-        Args:
-            df (pd.DataFrame): The DataFrame to set.
-        """
-        if not df.empty and not self.df_data.empty:
-            raise ValueError("DataFrame cannot be set once data has been appended.")
-        self.df_data = df
+        with open(self._file_path, "w", newline="") as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(self._columns)
+            writer.writerows(self._rows)
