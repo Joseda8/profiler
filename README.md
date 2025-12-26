@@ -5,7 +5,7 @@ This profilers is a Python-based tool designed to measure the performance and re
 
 It collects various system statistics such as CPU usage, memory usage and execution time.
 
-The profiler collects stats with an ideal sampling rate of 100ms. Also, since it triggers the process to profile without being part of it, the profiling process has a very low overhead.
+The profiler collects stats with an ideal sampling rate of 50ms. Also, since it triggers the process to profile without being part of it, the profiling process has a very low overhead.
 
 > For now the project has been tested only on `Fedora 37` and `Ubuntu 24.04.3 LTS`.
 
