@@ -25,8 +25,8 @@ def run_python_process(file_or_module: str, is_module: bool, args: List[str] = [
 
     # Run the process and get PID
     if is_module:
-        command = f"python3 -m {file_or_module} {' '.join(args)}"
+        command = ["python3", "-m", file_or_module, *args]
     else:
-        command = f"python3 {file_or_module} {' '.join(args)}"
+        command = ["python3", file_or_module, *args]
 
-    return subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
+    return subprocess.Popen(command, stdout=subprocess.PIPE, shell=False)
