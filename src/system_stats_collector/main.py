@@ -1,4 +1,5 @@
 from typing import List, Optional, Tuple
+from time import perf_counter
 
 import psutil
 
@@ -172,14 +173,13 @@ class SystemStatsCollector:
         )
         return package_temp
 
-    def collect_stats(self) -> Optional[List]:
+    def _collect_stats(self) -> Optional[List]:
         """
         Collect stats for the current process.
 
         Returns:
             new_stats: Stats collected.
         """
-        # Collect stats
         execution_time = self.get_measure_timestamp()
         cpu_usage = self.get_cpu_usage()
         cpu_usage_per_core = SystemStatsCollector.get_cpu_usage_per_core()
@@ -193,3 +193,23 @@ class SystemStatsCollector:
             return new_stats
         else:
             return None
+
+    def collect_stats(self, log_timer: bool = False) -> Optional[List]:
+        """
+        Collect stats for the current process.
+
+        Args:
+            log_timer (bool): When True, log the time spent collecting stats.
+
+        Returns:
+            new_stats: Stats collected.
+        """
+        timer_start = perf_counter() if log_timer else None
+        stats = self._collect_stats()
+
+        if log_timer and timer_start is not None:
+            elapsed = perf_counter() - timer_start
+            suffix = "" if stats is not None else " (failed sample)"
+            logger.debug(f"collect_stats duration{suffix}: {elapsed:.6f}s")
+
+        return stats

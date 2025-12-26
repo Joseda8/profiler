@@ -1,5 +1,6 @@
 from time import sleep
 import argparse
+import logging
 
 from .const import OUTPUT_FILE_PATH, RESULTS_PREPROCESSED_FILE_PATH, STATS_FILE_PATH
 from .stats_cleaner import StatsCleaner
@@ -13,8 +14,12 @@ parser.add_argument("--file_to_run", required=True, help="Path to the file or mo
 parser.add_argument("--language", choices=["python", "c"], default="python", help="Type of target: python (script/module) or native executable.")
 parser.add_argument("--is_module", action="store_true", help="Flag indicating whether the provided input is a module (only for --language python).")
 parser.add_argument("--script_args", nargs=argparse.REMAINDER, default=[], help="Optional arguments for the program to run")
+parser.add_argument("--log_collect_time", action="store_true", help="Enable debug logs for the time spent collecting stats each sample.")
 args = parser.parse_args()
 
+# Adjust log level if timing logs are requested
+if args.log_collect_time:
+    logger.setLevel(logging.DEBUG)
 
 # ------- Pre-run process
 values_to_measure = SystemStatsCollector.get_values_to_measure()
@@ -40,7 +45,7 @@ profiler_measurer = SystemStatsCollector(pid=pid)
 process_creation_time = profiler_measurer.get_process_create_time()
 while process.poll() is None:
     # Collect stats
-    stats_collected = profiler_measurer.collect_stats()
+    stats_collected = profiler_measurer.collect_stats(log_timer=args.log_collect_time)
     # Append new stats if they were successfully collected
     if stats_collected is not None:
         file_stats.append_row(row_data=stats_collected)
