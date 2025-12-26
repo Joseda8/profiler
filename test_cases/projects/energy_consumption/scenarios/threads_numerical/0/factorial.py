@@ -3,6 +3,7 @@ import concurrent.futures
 import math
 
 from src.client_interface import set_tag, set_output_filename
+from test_cases.util import runtime_flavor_suffix
 
 
 def factorial(n: int) -> int:
@@ -15,8 +16,9 @@ if __name__ == "__main__":
     parser.add_argument("--num_workers", required=True, type=int, help="Number of worker threads.")
     args = parser.parse_args()
     num_workers = args.num_workers
+    runtime_flavor = runtime_flavor_suffix()
 
-    set_output_filename(filename=f"factorial_{num_workers}")
+    set_output_filename(filename=f"factorial_{num_workers}_{runtime_flavor}")
 
     numbers = list(range(10000))
 

@@ -184,4 +184,3 @@ if __name__ == "__main__":
     data_handler.extend_data(num_records=500000)
     data_handler.extend_data(num_records=1000000)
     data_handler.extend_data(num_records=2000000)
-    
