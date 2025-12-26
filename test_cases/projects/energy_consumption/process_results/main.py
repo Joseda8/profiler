@@ -113,6 +113,9 @@ def stage_aggregate(files_stats: List[FileStats], output_path: str, task_label: 
     cv_writer.write_to_csv()
     logger.info(f"Global CVs written to {cv_writer._file_path}")
 
+    # Normalized file: set best (minimum) per metric as 1.0
+    _write_normalized(csv_writer.df_data, output_path, variant_column)
+
     # Generate requested plots using DataPlotter
     graphs_dir = os.path.join(os.path.dirname(output_path), "graphs")
     plotter = DataPlotter(path_file_stats=output_path, folder_results=graphs_dir)
@@ -133,6 +136,43 @@ def stage_plot_results(csv_writer: Optional[FileWriterCsv]) -> None:
         logger.warning("No data available for plotting stage.")
         return
     logger.info("Plotting stage handled during aggregation.")
+
+
+def _write_normalized(df: pd.DataFrame, output_path: str, variant_column: str) -> None:
+    """
+    Normalize metrics so the best (minimum) value per column becomes 1.0.
+    """
+    if df.empty:
+        logger.warning("No data to normalize.")
+        return
+
+    df_norm = df.copy()
+    metric_cols = [col for col in df_norm.columns if col != variant_column and not col.endswith("_cv")]
+    norm_only = df_norm[[variant_column]].copy()
+    for col in metric_cols:
+        numeric = pd.to_numeric(df_norm[col], errors="coerce")
+        # For normalization only: replace NaN/zero with 0.1 before computing minimum
+        numeric_filled = numeric.fillna(0.1).replace(0, 0.1)
+        if numeric_filled.empty:
+            logger.warning(f"No data to normalize for {col}.")
+            continue
+        min_val = numeric_filled.min()
+        norm_col = col
+        normalized_vals = numeric_filled / min_val if min_val else numeric_filled
+        norm_only[norm_col] = normalized_vals
+
+    # Sort normalized rows by energy if available (ascending, best=1.0 first)
+    energy_col = "energy_max"
+    if energy_col in norm_only.columns:
+        norm_only = norm_only.sort_values(by=energy_col)
+
+    norm_dir = os.path.join(os.path.dirname(output_path), "normalized")
+    os.makedirs(norm_dir, exist_ok=True)
+    norm_path = os.path.join(norm_dir, os.path.basename(output_path))
+    norm_writer = FileWriterCsv(file_path=norm_path)
+    norm_writer.set_data_frame(df=norm_only)
+    norm_writer.write_to_csv()
+    logger.info(f"Normalized results written to {norm_path}")
 
 
 if __name__ == "__main__":
