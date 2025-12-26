@@ -30,3 +30,22 @@ def run_python_process(file_or_module: str, is_module: bool, args: List[str] = [
         command = ["python3", file_or_module, *args]
 
     return subprocess.Popen(command, stdout=subprocess.PIPE, shell=False)
+
+
+def run_c_process(executable_path: str, args: List[str] = []) -> subprocess.Popen:
+    """
+    Run a compiled C binary.
+
+    Args:
+        executable_path (str): Path to the executable file.
+        args (List[str], optional): List of arguments to pass to the program. Default is [].
+
+    Returns:
+        subprocess.Popen: Popen object representing the running process.
+    """
+    if not os.path.exists(executable_path):
+        logger.error(f"Executable '{executable_path}' does not exist.")
+        exit()
+
+    command = [executable_path, *args]
+    return subprocess.Popen(command, stdout=subprocess.PIPE, shell=False)

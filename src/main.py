@@ -4,14 +4,15 @@ import argparse
 from .const import OUTPUT_FILE_PATH, RESULTS_PREPROCESSED_FILE_PATH, STATS_FILE_PATH
 from .stats_cleaner import StatsCleaner
 from .system_stats_collector import SystemStatsCollector
-from .util import FileWriterCsv, FileWriterTxt, logger, run_python_process
+from .util import FileWriterCsv, FileWriterTxt, logger, run_python_process, run_c_process
 
 
 # ------- Parse terminal arguments
-parser = argparse.ArgumentParser(description="Measure the performance of a given Python program.")
-parser.add_argument("--file_to_run", required=True, help="Name of the file or module to run.")
-parser.add_argument("--is_module", action='store_true', help="Flag indicating whether the provided input is a module.")
-parser.add_argument("--script_args", nargs=argparse.REMAINDER, default=[], help="Optional arguments for the script to run")
+parser = argparse.ArgumentParser(description="Measure the performance of a given program.")
+parser.add_argument("--file_to_run", required=True, help="Path to the file or module to run.")
+parser.add_argument("--language", choices=["python", "c"], default="python", help="Type of target: python (script/module) or native executable.")
+parser.add_argument("--is_module", action="store_true", help="Flag indicating whether the provided input is a module (only for --language python).")
+parser.add_argument("--script_args", nargs=argparse.REMAINDER, default=[], help="Optional arguments for the program to run")
 args = parser.parse_args()
 
 
@@ -23,7 +24,14 @@ file_stats.set_columns(columns=values_to_measure)
 
 # ------- Start process and collect stats
 # Run the process and get PID
-process = run_python_process(file_or_module=args.file_to_run, is_module=args.is_module, args=args.script_args)
+if args.language == "python":
+    process = run_python_process(file_or_module=args.file_to_run, is_module=args.is_module, args=args.script_args)
+elif args.language == "c":
+    process = run_c_process(executable_path=args.file_to_run, args=args.script_args)
+else:
+    logger.error(f"Unsupported language: {args.language}")
+    exit()
+
 pid = process.pid
 logger.info(f"PID of the command: {pid}")
 
