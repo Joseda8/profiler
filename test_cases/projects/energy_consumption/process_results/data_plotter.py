@@ -113,13 +113,21 @@ class DataPlotter:
         plt.grid(True)
         self._save_plot(plt.gcf(), f"{self._file_stats_name}_{y_column}_vs_{x_column}.png")
 
-    def plot_lines(self, x_column: str, y_columns: List[str], title: str):
+    def plot_lines(self, x_column: str, y_columns: List[str], title: str, annotate_variant: bool = False, variant_column: str = None):
         """
         Plot multiple lines against a shared x axis.
         """
         plt.figure(figsize=(12, 8))
         for y in y_columns:
             plt.plot(self._df[x_column], self._df[y], marker="o", linestyle="-", label=y)
+            if annotate_variant and variant_column and variant_column in self._df.columns:
+                for _, row in self._df.iterrows():
+                    raw_val = row[variant_column]
+                    if isinstance(raw_val, (int, float)) and float(raw_val).is_integer():
+                        label_val = str(int(raw_val))
+                    else:
+                        label_val = str(raw_val)
+                    plt.annotate(label_val, (row[x_column], row[y]), textcoords="offset points", xytext=(5,5), fontsize=8)
         plt.xlabel(x_column, fontsize=14)
         plt.ylabel("value", fontsize=14)
         plt.title(title, fontsize=18)

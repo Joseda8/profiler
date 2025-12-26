@@ -107,14 +107,17 @@ def stage_aggregate(files_stats: List[FileStats], output_path: str, task_label: 
     cv_writer.append_row(["cpu_usage", _cv(csv_writer.df_data["cpu_usage"])])
     cv_writer.append_row(["vms", _cv(csv_writer.df_data["vms"])])
     cv_writer.append_row(["ram", _cv(csv_writer.df_data["ram"])])
+    cv_dir = os.path.join(os.path.dirname(output_path), "cvs")
+    os.makedirs(cv_dir, exist_ok=True)
+    cv_writer._file_path = os.path.join(cv_dir, os.path.basename(cv_path))
     cv_writer.write_to_csv()
-    logger.info(f"Global CVs written to {cv_path}")
+    logger.info(f"Global CVs written to {cv_writer._file_path}")
 
     # Generate requested plots using DataPlotter
     graphs_dir = os.path.join(os.path.dirname(output_path), "graphs")
     plotter = DataPlotter(path_file_stats=output_path, folder_results=graphs_dir)
-    plotter.plot_lines(x_column="uptime", y_columns=["energy_max"], title="Energy vs Uptime")
-    plotter.plot_lines(x_column="cpu_usage", y_columns=["energy_max"], title="Energy vs CPU Usage")
+    plotter.plot_lines(x_column="uptime", y_columns=["energy_max"], title="Energy vs Uptime", annotate_variant=True, variant_column=variant_column)
+    plotter.plot_lines(x_column="cpu_usage", y_columns=["energy_max"], title="Energy vs CPU Usage", annotate_variant=True, variant_column=variant_column)
     if variant_column in plotter.stats_columns:
         plotter.plot_lines(x_column=variant_column, y_columns=["cpu_usage"], title="CPU Usage vs Variant")
         plotter.plot_lines(x_column=variant_column, y_columns=["vms", "ram"], title="Memory vs Variant")
