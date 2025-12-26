@@ -1,3 +1,7 @@
+"""
+Threaded N-body benchmark for energy consumption tests.
+"""
+
 import argparse
 import concurrent.futures
 import math
@@ -14,9 +18,7 @@ G_CONSTANT = 6.67430e-11
 
 
 def chunk_indices(total_items: int, num_workers: int) -> Iterable[Tuple[int, int]]:
-    """
-    Yield (start, end) index pairs that partition the items across workers.
-    """
+    """Yield (start, end) index pairs that partition the items across workers."""
     items_per_worker = (total_items + num_workers - 1) // num_workers
     for worker_index in range(num_workers):
         start_index = worker_index * items_per_worker
@@ -27,9 +29,7 @@ def chunk_indices(total_items: int, num_workers: int) -> Iterable[Tuple[int, int
 
 
 def seed_positions(num_particles: int) -> List[Vector]:
-    """
-    Deterministically seed particle positions in a 3D lattice pattern.
-    """
+    """Deterministically seed particle positions in a 3D lattice pattern."""
     positions: List[Vector] = []
     side = int(round(num_particles ** (1 / 3))) or 1
     scale = 1e3
@@ -42,9 +42,7 @@ def seed_positions(num_particles: int) -> List[Vector]:
 
 
 def seed_velocities(num_particles: int) -> List[Vector]:
-    """
-    Deterministically seed particle velocities with small variations.
-    """
+    """Deterministically seed particle velocities with small variations."""
     velocities: List[Vector] = []
     for idx in range(num_particles):
         velocities.append((0.0, 0.0, 0.0 if idx % 2 == 0 else 1e-3))
@@ -59,9 +57,7 @@ def compute_step_for_slice(
     delta_t: float,
     softening: float,
 ) -> Tuple[List[Vector], List[Vector]]:
-    """
-    Compute updated positions and velocities for a slice of particles.
-    """
+    """Compute updated positions and velocities for a slice of particles."""
     num_particles = len(positions)
     updated_positions: List[Vector] = []
     updated_velocities: List[Vector] = []
@@ -102,9 +98,7 @@ def compute_step_for_slice(
 
 
 def aggregate_slices(slices: List[Tuple[int, List[Vector], List[Vector]]], total_particles: int) -> Tuple[List[Vector], List[Vector]]:
-    """
-    Rebuild full position and velocity arrays from worker slices.
-    """
+    """Rebuild full position and velocity arrays from worker slices."""
     positions = [None] * total_particles
     velocities = [None] * total_particles
     for start_index, pos_slice, vel_slice in slices:
@@ -116,16 +110,12 @@ def aggregate_slices(slices: List[Tuple[int, List[Vector], List[Vector]]], total
 
 
 def compute_checksum(positions: List[Vector], velocities: List[Vector]) -> float:
-    """
-    Compute a simple checksum to prevent optimizations from removing work.
-    """
+    """Compute a simple checksum to prevent optimizations from removing work."""
     return sum(px + py + pz + vx + vy + vz for (px, py, pz), (vx, vy, vz) in zip(positions, velocities))
 
 
 def run_nbody(num_particles: int, num_steps: int, num_workers: int, delta_t: float = 0.01, softening: float = 1e-9) -> float:
-    """
-    Run a naive O(N^2) N-body simulation for a fixed number of steps and return a checksum.
-    """
+    """Run a naive O(N^2) N-body simulation for a fixed number of steps and return a checksum."""
     positions = seed_positions(num_particles)
     velocities = seed_velocities(num_particles)
 

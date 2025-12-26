@@ -1,3 +1,7 @@
+"""
+Threaded text tokenization benchmark for energy consumption tests.
+"""
+
 import argparse
 import concurrent.futures
 from collections import Counter
@@ -8,6 +12,7 @@ from test_cases.util import runtime_flavor_suffix
 
 
 def chunk_indices(total_items: int, num_workers: int) -> Iterable[Tuple[int, int]]:
+    """Yield (start, end) index pairs that partition the items across workers."""
     items_per_worker = (total_items + num_workers - 1) // num_workers
     for worker_index in range(num_workers):
         start_index = worker_index * items_per_worker
@@ -18,6 +23,7 @@ def chunk_indices(total_items: int, num_workers: int) -> Iterable[Tuple[int, int
 
 
 def build_sentences(num_records: int) -> List[str]:
+    """Generate synthetic sentences for tokenization."""
     base_sentences = [
         "Concurrency without a global interpreter lock enables true parallelism.",
         "Thread scheduling affects throughput and latency.",
@@ -32,6 +38,7 @@ def build_sentences(num_records: int) -> List[str]:
 
 
 def tokenize_slice(start_index: int, end_index: int, sentences: List[str]) -> Counter:
+    """Tokenize a slice of sentences and return token frequency counts."""
     token_counts: Counter = Counter()
     for sentence in sentences[start_index:end_index]:
         tokens = sentence.lower().split()
@@ -40,6 +47,7 @@ def tokenize_slice(start_index: int, end_index: int, sentences: List[str]) -> Co
 
 
 def run_tokenize_benchmark(sentences: List[str], num_workers: int) -> int:
+    """Tokenize all sentences using a thread pool and return the total token count."""
     counters: List[Counter] = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
         futures = [

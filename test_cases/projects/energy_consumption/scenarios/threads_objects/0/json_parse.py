@@ -1,3 +1,7 @@
+"""
+Threaded JSON parsing benchmark for energy consumption tests.
+"""
+
 import argparse
 import concurrent.futures
 import json
@@ -7,6 +11,7 @@ from src.client_interface import set_output_filename, set_tag
 from test_cases.util import runtime_flavor_suffix
 
 def chunk_indices(total_items: int, num_workers: int) -> Iterable[Tuple[int, int]]:
+    """Yield (start, end) index pairs that partition the items across workers."""
     items_per_worker = (total_items + num_workers - 1) // num_workers
     for worker_index in range(num_workers):
         start_index = worker_index * items_per_worker
@@ -35,7 +40,6 @@ def parse_slice(start_index: int, end_index: int, payloads: List[str]) -> Tuple[
     """
     Parse a slice of JSON payloads and accumulate simple stats.
 
-    Dataset fields (randomuser.me) include 'gender' and 'dob': {'age': int}.
     We count records and sum ages to keep the workload deterministic.
     """
     record_count = 0
