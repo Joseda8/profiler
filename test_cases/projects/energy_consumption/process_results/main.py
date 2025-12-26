@@ -4,8 +4,11 @@ import os
 import re
 from typing import List, Optional
 
+import pandas as pd
+
 from src.client_interface.process_results import FileStats
 from ....util import FileWriterCsv, logger
+from .data_plotter import DataPlotter
 
 
 def _extract_variant(path: str, pattern: str) -> Optional[int]:
@@ -53,7 +56,7 @@ def stage_aggregate(files_stats: List[FileStats], output_path: str, task_label: 
 
     start_label, finish_label = f"start_{task_label}", f"finish_{task_label}"
     csv_writer = FileWriterCsv(file_path=output_path)
-    csv_writer.set_columns([variant_column, "uptime", "cpu_usage", "energy_max", "vms", "ram", "cores_disparity"])
+    csv_writer.set_columns([variant_column, "uptime", "cpu_usage", "cpu_usage_cv", "energy_max", "vms", "vms_cv", "ram", "ram_cv", "cores_disparity"])
 
     for file in files_stats:
         variant_value = _extract_variant(file._file_path, variant_regex)
@@ -66,16 +69,56 @@ def stage_aggregate(files_stats: List[FileStats], output_path: str, task_label: 
             logger.warning(f"Missing task label '{task_label}' in {file._file_path}; skipping.")
             continue
 
-        cpu_usage, vms, ram, _ = file.get_average_between_labels(start_label=start_label, finish_label=finish_label)
+        averages = file.get_average_between_labels(start_label=start_label, finish_label=finish_label)
+        if averages is None:
+            logger.warning(f"Could not compute averages for {file._file_path}; skipping.")
+            continue
+        cpu_usage, vms, ram, _ = averages
+        stds = file.get_std_between_labels(start_label=start_label, finish_label=finish_label)
+        if stds is None:
+            logger.warning(f"Could not compute stds for {file._file_path}; skipping.")
+            continue
+        cpu_usage_std, vms_std, ram_std = stds
         _, _, _, _, _, _, _, energy_max = file.get_min_max_memory_stats(start_label=start_label, finish_label=finish_label)
         _, time_dominant_cores, cores_disparity_avg = file.track_dominant_core_changes_between_labels(start_label=start_label, finish_label=finish_label)
         _ = uptimes[task_label] - time_dominant_cores
 
-        csv_writer.append_row([variant_value, uptimes[task_label], cpu_usage, energy_max, vms, ram, cores_disparity_avg])
+        cpu_cv = cpu_usage_std / cpu_usage if cpu_usage else 0
+        vms_cv = vms_std / vms if vms else 0
+        ram_cv = ram_std / ram if ram else 0
+
+        csv_writer.append_row([variant_value, uptimes[task_label], cpu_usage, cpu_cv, energy_max, vms, vms_cv, ram, ram_cv, cores_disparity_avg])
 
     csv_writer.order_by_columns(columns=[variant_column])
     csv_writer.write_to_csv()
     logger.info(f"Aggregated results written to {output_path}")
+
+    # Global CVs
+    def _cv(series):
+        series = pd.to_numeric(series, errors="coerce").dropna()
+        if series.empty:
+            return 0.0
+        mean_val = series.mean()
+        return series.std() / mean_val if mean_val else 0.0
+
+    cv_path = output_path.replace(".csv", "_cv.csv")
+    cv_writer = FileWriterCsv(file_path=cv_path)
+    cv_writer.set_columns(["metric", "cv"])
+    cv_writer.append_row(["cpu_usage", _cv(csv_writer.df_data["cpu_usage"])])
+    cv_writer.append_row(["vms", _cv(csv_writer.df_data["vms"])])
+    cv_writer.append_row(["ram", _cv(csv_writer.df_data["ram"])])
+    cv_writer.write_to_csv()
+    logger.info(f"Global CVs written to {cv_path}")
+
+    # Generate requested plots using DataPlotter
+    graphs_dir = os.path.join(os.path.dirname(output_path), "graphs")
+    plotter = DataPlotter(path_file_stats=output_path, folder_results=graphs_dir)
+    plotter.plot_lines(x_column="uptime", y_columns=["energy_max"], title="Energy vs Uptime")
+    plotter.plot_lines(x_column="cpu_usage", y_columns=["energy_max"], title="Energy vs CPU Usage")
+    if variant_column in plotter.stats_columns:
+        plotter.plot_lines(x_column=variant_column, y_columns=["cpu_usage"], title="CPU Usage vs Variant")
+        plotter.plot_lines(x_column=variant_column, y_columns=["vms", "ram"], title="Memory vs Variant")
+
     return csv_writer
 
 
@@ -86,7 +129,7 @@ def stage_plot_results(csv_writer: Optional[FileWriterCsv]) -> None:
     if csv_writer is None:
         logger.warning("No data available for plotting stage.")
         return
-    logger.info("Plotting stage not implemented yet. Hook here for graphs.")
+    logger.info("Plotting stage handled during aggregation.")
 
 
 if __name__ == "__main__":

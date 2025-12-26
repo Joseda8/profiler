@@ -1,7 +1,10 @@
-from typing import List
+from typing import List, Optional
 import os
 
 from matplotlib.figure import Figure
+import matplotlib
+matplotlib.rcParams["svg.fonttype"] = "none"
+matplotlib.rcParams["font.family"] = "DejaVu Sans"
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -14,13 +17,14 @@ class DataPlotter:
     Class to plot graphs based on test data stored in a CSV file.
     """
 
-    def __init__(self, path_file_stats: str, folder_results: str):
+    def __init__(self, path_file_stats: str, folder_results: str, group_by: Optional[str] = None):
         """
         Initialize DataPlotter.
 
         Args:
             path_file_stats (str): Path to the path with the stats to graph.
             folder_results (str): Folder to store the graphs.
+            group_by (str, optional): Column to group data by for plotting.
         """
         self._path_file_stats = path_file_stats
         self._file_stats_name = os.path.basename(self._path_file_stats).replace(".csv", "")
@@ -28,11 +32,12 @@ class DataPlotter:
 
         # DataFrame of the stats
         self._df = pd.read_csv(path_file_stats)
-        # Group the DataFrame by test_name
-        self._df_grouped = self._df.groupby("test_name")
-        # List of number of records
-        self._num_records = self._df["num_records"].unique().tolist()
-        self._num_records.sort()
+        self._group_by = group_by if group_by and group_by in self._df.columns else None
+        self._df_grouped = self._df.groupby(self._group_by) if self._group_by else None
+        self._num_records = []
+        if "num_records" in self._df.columns:
+            self._num_records = self._df["num_records"].unique().tolist()
+            self._num_records.sort()
         # Create graphs folder
         create_directory(directory=self._folder_results)
 
@@ -60,7 +65,7 @@ class DataPlotter:
 
     def plot_line_graph(self, x_column: str, y_column: str, title: str):
         """
-        Plot line graphs for each test_name based on specified axis_x and y columns.
+        Plot line graphs for each group based on specified x and y columns.
 
         Args:
             x_column (str): Column name for the axis_x-axis.
@@ -73,19 +78,54 @@ class DataPlotter:
         plt.xlabel(x_column, fontsize=20)
         plt.ylabel(y_column, fontsize=20)
 
-        # Iterate through each group and plot
-        for name, group in self._df_grouped:
-            group = group.sort_values(by=x_column)
-            plt.plot(group[x_column], group[y_column], marker="o", linestyle="-", label=name)
-            plt.xlim(group[x_column].min(), group[x_column].max())
+        if self._df_grouped is not None:
+            for name, group in self._df_grouped:
+                group = group.sort_values(by=x_column)
+                plt.plot(group[x_column], group[y_column], marker="o", linestyle="-", label=name)
+                plt.xlim(group[x_column].min(), group[x_column].max())
+            plt.legend(loc="best", fontsize=20)
+        else:
+            sorted_df = self._df.sort_values(by=x_column)
+            plt.plot(sorted_df[x_column], sorted_df[y_column], marker="o", linestyle="-")
+            plt.xlim(sorted_df[x_column].min(), sorted_df[x_column].max())
         # Extra configurations
-        plt.xticks(self._num_records, fontsize=16)
         plt.yticks(fontsize=16)
-        plt.xscale("log")
-        plt.legend(loc="best", fontsize=20)
         plt.grid(True)
         # Save graph
         self._save_plot(plt.gcf(), f"{self._file_stats_name}_{y_column}.png")
+
+    def plot_scatter(self, x_column: str, y_column: str, title: str):
+        """
+        Scatter plot of two columns, optionally grouped.
+        """
+        plt.figure(figsize=(10, 7))
+        plt.title(title, fontsize=18)
+        plt.xlabel(x_column, fontsize=14)
+        plt.ylabel(y_column, fontsize=14)
+
+        if self._df_grouped is not None:
+            for name, group in self._df_grouped:
+                plt.scatter(group[x_column], group[y_column], alpha=0.7, label=str(name))
+            plt.legend(loc="best")
+        else:
+            plt.scatter(self._df[x_column], self._df[y_column], alpha=0.7)
+
+        plt.grid(True)
+        self._save_plot(plt.gcf(), f"{self._file_stats_name}_{y_column}_vs_{x_column}.png")
+
+    def plot_lines(self, x_column: str, y_columns: List[str], title: str):
+        """
+        Plot multiple lines against a shared x axis.
+        """
+        plt.figure(figsize=(12, 8))
+        for y in y_columns:
+            plt.plot(self._df[x_column], self._df[y], marker="o", linestyle="-", label=y)
+        plt.xlabel(x_column, fontsize=14)
+        plt.ylabel("value", fontsize=14)
+        plt.title(title, fontsize=18)
+        plt.legend(loc="best")
+        plt.grid(True)
+        self._save_plot(plt.gcf(), f"{self._file_stats_name}_{title.lower().replace(' ', '_')}.png")
 
     def plot_bar_graphs(self, x_column: str, y_columns: List[str], title: str):
         """
@@ -100,31 +140,27 @@ class DataPlotter:
         bar_width = 0.2
         num_columns = len(y_columns)
 
+        if self._df_grouped is None:
+            return
+
         for name, group in self._df_grouped:
-            # Create a larger figure
             plt.figure(figsize=(16, 9))
             group = group.sort_values(by=x_column)
-            # Update each column in the list with proportions scaled to percentage
             total_time = group[y_columns].sum(axis=1)
             for col in y_columns:
                 group[col] = (group[col] / total_time) * 100
 
-            # Set positions of bars on X axis
             bar_groups = np.arange(len(group))
 
-            # Plot grouped bars for each column in y_columns
             for idx, column in enumerate(y_columns):
-                # Calculate positions for grouped bars
                 current_bar_group = bar_groups + (idx - num_columns/2 + 0.5) * bar_width
                 plt.bar(current_bar_group, group[column], width=bar_width, label=column)
             
-            # Add graph configurations
             plt.xlabel(x_column, fontsize=20)
             plt.xticks(bar_groups, self._num_records, fontsize=16)
             plt.yticks(fontsize=16)
             plt.title(title, fontsize=25)
             plt.legend(loc="best", fontsize=20)
 
-            # Save graph
             title_clean = title.lower().replace(" ", "_")
             self._save_plot(plt.gcf(), f"{self._file_stats_name}_{title_clean}_{name}.png")
