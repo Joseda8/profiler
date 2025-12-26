@@ -43,6 +43,7 @@ logger.info(f"PID of the command: {pid}")
 # Measure subprocess resources usage
 profiler_measurer = SystemStatsCollector(pid=pid)
 process_creation_time = profiler_measurer.get_process_create_time()
+logger.info(f"Starting the profiling...")
 while process.poll() is None:
     # Collect stats
     stats_collected = profiler_measurer.collect_stats(log_timer=args.log_collect_time)

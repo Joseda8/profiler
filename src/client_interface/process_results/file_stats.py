@@ -135,6 +135,26 @@ class FileStats:
         average_swap_usage = df_between_labels[CSV_STATS_COL_NAME_SWAP_USAGE].mean()
         return (average_cpu_usage, average_virtual_memory_usage, average_ram_usage, average_swap_usage)
 
+    def get_std_between_labels(self, start_label: str, finish_label: str) -> Optional[Tuple[float, float, float]]:
+        """
+        Compute the standard deviation of CPU usage and memory stats between two labels.
+
+        Returns None if either of the labels was not found.
+        """
+        df_between_labels = self._get_df_between_labels(start_label=start_label, finish_label=finish_label)
+        if df_between_labels is None or df_between_labels.empty:
+            return None
+        std_cpu_usage = df_between_labels[CSV_STATS_COL_NAME_CPU_USAGE].std()
+        std_virtual_memory_usage = df_between_labels[CSV_STATS_COL_NAME_VIRTUAL_MEMORY_USAGE].std()
+        std_ram_usage = df_between_labels[CSV_STATS_COL_NAME_RAM_USAGE].std()
+        return (std_cpu_usage, std_virtual_memory_usage, std_ram_usage)
+
+    def get_column_std(self, column_name: str) -> float:
+        """
+        Compute the standard deviation of a column across the full stats DataFrame.
+        """
+        return float(self._df_stats[column_name].std())
+
     def get_min_max_memory_stats(self, start_label: str, finish_label: str) -> Optional[Tuple[float, float, float, float, float, float, float, float]]:
         """
         Get the minimum and maximum memory stats between two labels.

@@ -183,7 +183,9 @@ class SystemStatsCollector:
         execution_time = self.get_measure_timestamp()
         cpu_usage = self.get_cpu_usage()
         cpu_usage_per_core = SystemStatsCollector.get_cpu_usage_per_core()
-        cpu_temperature = self.get_cpu_temperature()
+        # Temporary deactivation of temperature measurements
+        # cpu_temperature = self.get_cpu_temperature()
+        cpu_temperature = 0
         memory_usage = self.get_memory_usage()
         energy_consumption = self.get_energy_consumption()
 

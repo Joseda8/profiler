@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from .....util import create_directory
+from ....util import create_directory
 
 
 class DataPlotter:

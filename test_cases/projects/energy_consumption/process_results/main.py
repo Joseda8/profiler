@@ -53,7 +53,7 @@ def stage_aggregate(files_stats: List[FileStats], output_path: str, task_label: 
 
     start_label, finish_label = f"start_{task_label}", f"finish_{task_label}"
     csv_writer = FileWriterCsv(file_path=output_path)
-    csv_writer.set_columns([variant_column, "uptime", "cpu_usage", "energy_min", "energy_max", "vms", "ram", "swap", "min_vms", "max_vms", "min_ram", "max_ram", "min_swap", "max_swap", "cores_disparity", "time_not_dominant_core"])
+    csv_writer.set_columns([variant_column, "uptime", "cpu_usage", "energy_max", "vms", "ram", "cores_disparity"])
 
     for file in files_stats:
         variant_value = _extract_variant(file._file_path, variant_regex)
@@ -66,12 +66,12 @@ def stage_aggregate(files_stats: List[FileStats], output_path: str, task_label: 
             logger.warning(f"Missing task label '{task_label}' in {file._file_path}; skipping.")
             continue
 
-        cpu_usage, vms, ram, swap = file.get_average_between_labels(start_label=start_label, finish_label=finish_label)
-        min_vms, max_vms, min_ram, max_ram, min_swap, max_swap, energy_min, energy_max = file.get_min_max_memory_stats(start_label=start_label, finish_label=finish_label)
+        cpu_usage, vms, ram, _ = file.get_average_between_labels(start_label=start_label, finish_label=finish_label)
+        _, _, _, _, _, _, _, energy_max = file.get_min_max_memory_stats(start_label=start_label, finish_label=finish_label)
         _, time_dominant_cores, cores_disparity_avg = file.track_dominant_core_changes_between_labels(start_label=start_label, finish_label=finish_label)
-        time_not_dominant_core = uptimes[task_label] - time_dominant_cores
+        _ = uptimes[task_label] - time_dominant_cores
 
-        csv_writer.append_row([variant_value, uptimes[task_label], cpu_usage, energy_min, energy_max, vms, ram, swap, min_vms, max_vms, min_ram, max_ram, min_swap, max_swap, cores_disparity_avg, time_not_dominant_core])
+        csv_writer.append_row([variant_value, uptimes[task_label], cpu_usage, energy_max, vms, ram, cores_disparity_avg])
 
     csv_writer.order_by_columns(columns=[variant_column])
     csv_writer.write_to_csv()
