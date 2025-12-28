@@ -36,7 +36,7 @@ def stage_collect(pattern: str) -> List[FileStats]:
     return [FileStats(file_path=p) for p in paths]
 
 
-def stage_aggregate(files_stats: List[FileStats], output_path: str, task_label: str, variant_regex: str, variant_column: str) -> Optional[FileWriterCsv]:
+def stage_aggregate(files_stats: List[FileStats], output_path: str, task_label: str, variant_regex: str, variant_column: str, flavor: str) -> Optional[FileWriterCsv]:
     """
     Aggregate metrics from each file into a single results CSV.
 
@@ -55,8 +55,21 @@ def stage_aggregate(files_stats: List[FileStats], output_path: str, task_label: 
         return None
 
     start_label, finish_label = f"start_{task_label}", f"finish_{task_label}"
+    # Load existing data (to allow merging gil/nogil into one file)
+    existing_df = None
+    if os.path.exists(output_path):
+        try:
+            existing_df = pd.read_csv(output_path)
+            existing_df = existing_df[existing_df["flavor"] != flavor]
+        except Exception as excep:
+            logger.warning(f"Failed to read existing output {output_path}: {excep}")
+            existing_df = None
+
     csv_writer = FileWriterCsv(file_path=output_path)
-    csv_writer.set_columns([variant_column, "uptime", "cpu_usage", "cpu_usage_cv", "energy_max", "vms", "vms_cv", "ram", "ram_cv", "cores_disparity"])
+    if existing_df is not None and not existing_df.empty:
+        csv_writer.set_data_frame(existing_df)
+    else:
+        csv_writer.set_columns([variant_column, "flavor", "uptime", "cpu_usage", "cpu_usage_cv", "energy_max", "vms", "vms_cv", "ram", "ram_cv", "cores_disparity"])
 
     for file in files_stats:
         variant_value = _extract_variant(file._file_path, variant_regex)
@@ -87,9 +100,9 @@ def stage_aggregate(files_stats: List[FileStats], output_path: str, task_label: 
         vms_cv = vms_std / vms if vms else 0
         ram_cv = ram_std / ram if ram else 0
 
-        csv_writer.append_row([variant_value, uptimes[task_label], cpu_usage, cpu_cv, energy_max, vms, vms_cv, ram, ram_cv, cores_disparity_avg])
+        csv_writer.append_row([variant_value, flavor, uptimes[task_label], cpu_usage, cpu_cv, energy_max, vms, vms_cv, ram, ram_cv, cores_disparity_avg])
 
-    csv_writer.order_by_columns(columns=[variant_column])
+    csv_writer.order_by_columns(columns=["flavor", variant_column])
     csv_writer.write_to_csv()
     logger.info(f"Aggregated results written to {output_path}")
 
@@ -104,6 +117,7 @@ def stage_aggregate(files_stats: List[FileStats], output_path: str, task_label: 
     cv_path = output_path.replace(".csv", "_cv.csv")
     cv_writer = FileWriterCsv(file_path=cv_path)
     cv_writer.set_columns(["metric", "cv"])
+    cv_writer.append_row(["uptime", _cv(csv_writer.df_data["uptime"])])
     cv_writer.append_row(["cpu_usage", _cv(csv_writer.df_data["cpu_usage"])])
     cv_writer.append_row(["vms", _cv(csv_writer.df_data["vms"])])
     cv_writer.append_row(["ram", _cv(csv_writer.df_data["ram"])])
@@ -113,12 +127,32 @@ def stage_aggregate(files_stats: List[FileStats], output_path: str, task_label: 
     cv_writer.write_to_csv()
     logger.info(f"Global CVs written to {cv_writer._file_path}")
 
+    # Per-flavor summary and CVs (independent)
+    if "flavor" in csv_writer.df_data.columns:
+        for flv, sub in csv_writer.df_data.groupby("flavor"):
+            flavor_summary_path = output_path.replace(".csv", f"_{flv}.csv")
+            sub_sorted = sub.sort_values(by=[variant_column]).drop(columns=["flavor"], errors="ignore")
+            flavor_writer = FileWriterCsv(file_path=flavor_summary_path)
+            flavor_writer.set_data_frame(df=sub_sorted)
+            flavor_writer.write_to_csv()
+            logger.info(f"Flavor summary written to {flavor_summary_path}")
+
+            flavor_cv_writer = FileWriterCsv(
+                file_path=os.path.join(cv_dir, f"{os.path.splitext(os.path.basename(flavor_summary_path))[0]}_cv.csv")
+            )
+            flavor_cv_writer.set_columns(["metric", "cv"])
+            flavor_cv_writer.append_row(["cpu_usage", _cv(sub["cpu_usage"])])
+            flavor_cv_writer.append_row(["vms", _cv(sub["vms"])])
+            flavor_cv_writer.append_row(["ram", _cv(sub["ram"])])
+            flavor_cv_writer.write_to_csv()
+            logger.info(f"Flavor CVs written to {flavor_cv_writer._file_path}")
+
     # Normalized file: set best (minimum) per metric as 1.0
     _write_normalized(csv_writer.df_data, output_path, variant_column)
 
     # Generate requested plots using DataPlotter
     graphs_dir = os.path.join(os.path.dirname(output_path), "graphs")
-    plotter = DataPlotter(path_file_stats=output_path, folder_results=graphs_dir)
+    plotter = DataPlotter(path_file_stats=output_path, folder_results=graphs_dir, group_by="flavor")
     plotter.plot_lines(x_column="uptime", y_columns=["energy_max"], title="Energy vs Uptime", annotate_variant=True, variant_column=variant_column)
     plotter.plot_lines(x_column="cpu_usage", y_columns=["energy_max"], title="Energy vs CPU Usage", annotate_variant=True, variant_column=variant_column)
     if variant_column in plotter.stats_columns:
@@ -147,32 +181,57 @@ def _write_normalized(df: pd.DataFrame, output_path: str, variant_column: str) -
         return
 
     df_norm = df.copy()
-    metric_cols = [col for col in df_norm.columns if col != variant_column and not col.endswith("_cv")]
-    norm_only = df_norm[[variant_column]].copy()
+    # Replace NaNs/zeros with 0.1 for normalization purposes only
+    df_norm = df_norm.replace(0, 0.1).fillna(0.1)
+
+    base_cols = [variant_column] + ([c for c in ["flavor"] if c in df_norm.columns])
+    metric_cols = [col for col in df_norm.columns if col not in base_cols and not col.endswith("_cv")]
+
+    norm_dir = os.path.join(os.path.dirname(output_path), "normalized")
+    os.makedirs(norm_dir, exist_ok=True)
+    base_name = os.path.basename(output_path)
+    energy_col = "energy_max"
+
+    # Combined normalization: compare across flavors but grouped by variant
+    norm_combined = df_norm[base_cols].copy()
     for col in metric_cols:
         numeric = pd.to_numeric(df_norm[col], errors="coerce")
-        # For normalization only: replace NaN/zero with 0.1 before computing minimum
         numeric_filled = numeric.fillna(0.1).replace(0, 0.1)
         if numeric_filled.empty:
             logger.warning(f"No data to normalize for {col}.")
             continue
-        min_val = numeric_filled.min()
-        norm_col = col
-        normalized_vals = numeric_filled / min_val if min_val else numeric_filled
-        norm_only[norm_col] = normalized_vals
+        min_by_variant = numeric_filled.groupby(df_norm[variant_column]).transform("min")
+        norm_combined[col] = numeric_filled / min_by_variant
+    sort_cols = [variant_column] + ([energy_col] if energy_col in norm_combined.columns else [])
+    norm_combined = norm_combined.sort_values(by=sort_cols)
 
-    # Sort normalized rows by energy if available (ascending, best=1.0 first)
-    energy_col = "energy_max"
-    if energy_col in norm_only.columns:
-        norm_only = norm_only.sort_values(by=energy_col)
-
-    norm_dir = os.path.join(os.path.dirname(output_path), "normalized")
-    os.makedirs(norm_dir, exist_ok=True)
-    norm_path = os.path.join(norm_dir, os.path.basename(output_path))
+    norm_path = os.path.join(norm_dir, base_name)
     norm_writer = FileWriterCsv(file_path=norm_path)
-    norm_writer.set_data_frame(df=norm_only)
+    norm_writer.set_data_frame(df=norm_combined)
     norm_writer.write_to_csv()
     logger.info(f"Normalized results written to {norm_path}")
+
+    # Independent normalization per flavor (separate files), ordered by energy
+    if "flavor" in df_norm.columns:
+        for flv, subdf in df_norm.groupby("flavor"):
+            norm_flavor = subdf[[variant_column]].copy()
+            for col in metric_cols:
+                numeric = pd.to_numeric(subdf[col], errors="coerce")
+                numeric_filled = numeric.fillna(0.1).replace(0, 0.1)
+                if numeric_filled.empty:
+                    continue
+                min_val = numeric_filled.min()
+                norm_flavor[col] = numeric_filled / min_val if min_val else numeric_filled
+            sort_cols_flavor = ([energy_col] if energy_col in norm_flavor.columns else [])
+            norm_flavor = norm_flavor.sort_values(by=sort_cols_flavor)
+
+            norm_flavor_path = os.path.join(
+                norm_dir, f"{os.path.splitext(base_name)[0]}_{flv}.csv"
+            )
+            norm_flavor_writer = FileWriterCsv(file_path=norm_flavor_path)
+            norm_flavor_writer.set_data_frame(df=norm_flavor)
+            norm_flavor_writer.write_to_csv()
+            logger.info(f"Normalized results written to {norm_flavor_path}")
 
 
 if __name__ == "__main__":
@@ -182,6 +241,7 @@ if __name__ == "__main__":
     parser.add_argument("--task_label", required=True, help="Task label used in tags (start_<label>, finish_<label>)")
     parser.add_argument("--variant_column", required=True, help="Column name for the varying parameter")
     parser.add_argument("--variant_regex", help="Regex capture group for variant; defaults to f'{task_label}_(\\d+)_'.")
+    parser.add_argument("--flavor", required=True, help="Execution flavor (e.g., gil or nogil)")
     args = parser.parse_args()
 
     # Build pipeline inputs
@@ -197,6 +257,7 @@ if __name__ == "__main__":
         task_label=args.task_label,
         variant_regex=variant_regex,
         variant_column=args.variant_column,
+        flavor=args.flavor,
     )
 
     # Plot results

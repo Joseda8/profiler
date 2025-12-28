@@ -25,34 +25,57 @@ def scenario_from_filename(filename: str) -> str:
 
 
 def collect_rows(pattern: str) -> List[Dict]:
-    rows = []
-    for path in glob.glob(pattern):
-        if path.endswith("_cv.csv"):
-            continue
-        with open(path, newline="") as f:
-            reader = csv.DictReader(f)
-            if not reader.fieldnames:
+    rows: List[Dict] = []
+
+    def process_paths(paths: List[str]) -> None:
+        for path in paths:
+            base = os.path.basename(path)
+            if path.endswith("_cv.csv") or "_summary_gil" in base or "_summary_nogil" in base:
                 continue
-            variant_col = reader.fieldnames[0]
-            for row in reader:
-                try:
-                    rows.append(
-                        {
-                            "scenario": scenario_from_filename(path),
-                            "flavor": detect_flavor(path),
-                            "variant_type": variant_col,
-                            "variant_value": row.get(variant_col, ""),
-                            "uptime": row.get("uptime", ""),
-                            "cpu_usage": row.get("cpu_usage", ""),
-                            "energy_max": row.get("energy_max", ""),
-                            "vms": row.get("vms", ""),
-                            "ram": row.get("ram", ""),
-                            "cores_disparity": row.get("cores_disparity", ""),
-                        }
-                    )
-                except Exception as excep:
-                    logger.warning(f"Skipping row in {path}: {excep}")
+            with open(path, newline="") as f:
+                reader = csv.DictReader(f)
+                if not reader.fieldnames:
                     continue
+                variant_col = reader.fieldnames[0]
+                for row in reader:
+                    try:
+                        rows.append(
+                            {
+                                "scenario": scenario_from_filename(path),
+                                "flavor": row.get("flavor", detect_flavor(path)),
+                                "variant_type": variant_col,
+                                "variant_value": row.get(variant_col, ""),
+                                "uptime": row.get("uptime", ""),
+                                "cpu_usage": row.get("cpu_usage", ""),
+                                "energy_max": row.get("energy_max", ""),
+                                "vms": row.get("vms", ""),
+                                "ram": row.get("ram", ""),
+                                "cores_disparity": row.get("cores_disparity", ""),
+                            }
+                        )
+                    except Exception as excep:
+                        logger.warning(f"Skipping row in {path}: {excep}")
+                        continue
+
+    paths = glob.glob(pattern)
+    process_paths(paths)
+
+    # Fallbacks if nothing useful was collected (e.g., pattern matched only skipped files)
+    if not rows:
+        fallback_patterns = []
+        if "summary_*" in pattern:
+            fallback_patterns.append(pattern.replace("summary_*", "summary"))
+            fallback_patterns.append(pattern.replace("summary_*", "summary*.csv"))
+        # Always try a generic combined summary search
+        fallback_patterns.append("results/processed/*summary.csv")
+        fallback_patterns.append("results/processed/*summary*.csv")
+
+        for fb in fallback_patterns:
+            process_paths(glob.glob(fb))
+            if rows:
+                logger.info(f"Using fallback pattern '{fb}'")
+                break
+
     return rows
 
 
@@ -198,7 +221,7 @@ def _generate_plots(df: pd.DataFrame, output_path: str) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Aggregate processed summaries into a single metrics file.")
-    parser.add_argument("--pattern", default="results/processed/*summary_*.csv", help="Glob pattern to match summary CSV files.")
+    parser.add_argument("--pattern", default="results/processed/*summary*.csv", help="Glob pattern to match summary CSV files.")
     parser.add_argument("--output_file", default="results/processed/all_metrics.csv", help="Path to write the aggregated metrics CSV.")
     args = parser.parse_args()
 

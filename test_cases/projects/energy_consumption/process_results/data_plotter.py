@@ -118,16 +118,30 @@ class DataPlotter:
         Plot multiple lines against a shared x axis.
         """
         plt.figure(figsize=(12, 8))
-        for y in y_columns:
-            plt.plot(self._df[x_column], self._df[y], marker="o", linestyle="-", label=y)
-            if annotate_variant and variant_column and variant_column in self._df.columns:
-                for _, row in self._df.iterrows():
-                    raw_val = row[variant_column]
-                    if isinstance(raw_val, (int, float)) and float(raw_val).is_integer():
-                        label_val = str(int(raw_val))
-                    else:
-                        label_val = str(raw_val)
-                    plt.annotate(label_val, (row[x_column], row[y]), textcoords="offset points", xytext=(5,5), fontsize=8)
+        if self._df_grouped is not None:
+            for group_name, group in self._df_grouped:
+                group = group.sort_values(by=x_column)
+                for y in y_columns:
+                    plt.plot(group[x_column], group[y], marker="o", linestyle="-", label=f"{group_name} {y}")
+                    if annotate_variant and variant_column and variant_column in group.columns:
+                        for _, row in group.iterrows():
+                            raw_val = row[variant_column]
+                            if isinstance(raw_val, (int, float)) and float(raw_val).is_integer():
+                                label_val = str(int(raw_val))
+                            else:
+                                label_val = str(raw_val)
+                            plt.annotate(label_val, (row[x_column], row[y]), textcoords="offset points", xytext=(5,5), fontsize=8)
+        else:
+            for y in y_columns:
+                plt.plot(self._df[x_column], self._df[y], marker="o", linestyle="-", label=y)
+                if annotate_variant and variant_column and variant_column in self._df.columns:
+                    for _, row in self._df.iterrows():
+                        raw_val = row[variant_column]
+                        if isinstance(raw_val, (int, float)) and float(raw_val).is_integer():
+                            label_val = str(int(raw_val))
+                        else:
+                            label_val = str(raw_val)
+                        plt.annotate(label_val, (row[x_column], row[y]), textcoords="offset points", xytext=(5,5), fontsize=8)
         plt.xlabel(x_column, fontsize=14)
         plt.ylabel("value", fontsize=14)
         plt.title(title, fontsize=18)
