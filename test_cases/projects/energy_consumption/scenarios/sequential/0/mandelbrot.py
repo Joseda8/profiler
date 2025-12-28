@@ -37,12 +37,14 @@ def mandelbrot_checksum(size: int) -> int:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Sequential Mandelbrot benchmark.")
     parser.add_argument("--size", type=int, default=1000, help="Image size (width = height = size).")
+    parser.add_argument("--run_idx", help="Optional run index to tag outputs.")
     args = parser.parse_args()
 
     size = args.size
     runtime_flavor = runtime_flavor_suffix()
+    run_suffix = f"run{args.run_idx}" if args.run_idx else ""
 
-    set_output_filename(filename=f"mandelbrot_{size}_{runtime_flavor}")
+    set_output_filename(filename=f"mandelbrot_{size}_{runtime_flavor}_{run_suffix}")
 
     set_tag("start_mandelbrot")
     checksum = mandelbrot_checksum(size=size)

@@ -28,12 +28,14 @@ def dot_checksum(matrix_a: np.ndarray, matrix_b: np.ndarray) -> float:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="NumPy BLAS (dot product) benchmark.")
     parser.add_argument("--size", type=int, default=1000, help="Square matrix size (size x size).")
+    parser.add_argument("--run_idx", help="Optional run index to tag outputs.")
     args = parser.parse_args()
 
     size = args.size
     runtime_flavor = runtime_flavor_suffix()
+    run_suffix = f"run{args.run_idx}" if args.run_idx else ""
 
-    set_output_filename(filename=f"numpy_blas_{size}_{runtime_flavor}")
+    set_output_filename(filename=f"numpy_blas_{size}_{runtime_flavor}_{run_suffix}")
 
     matrix_a, matrix_b = build_matrices(size)
 

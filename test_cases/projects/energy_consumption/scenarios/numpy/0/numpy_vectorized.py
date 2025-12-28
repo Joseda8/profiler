@@ -31,12 +31,14 @@ def vectorized_work(array_a: np.ndarray, array_b: np.ndarray) -> float:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="NumPy vectorized benchmark.")
     parser.add_argument("--length", type=int, default=5_000_000, help="Length of input arrays.")
+    parser.add_argument("--run_idx", help="Optional run index to tag outputs.")
     args = parser.parse_args()
 
     length = args.length
     runtime_flavor = runtime_flavor_suffix()
+    run_suffix = f"run{args.run_idx}" if args.run_idx else ""
 
-    set_output_filename(filename=f"numpy_vectorized_{length}_{runtime_flavor}")
+    set_output_filename(filename=f"numpy_vectorized_{length}_{runtime_flavor}_{run_suffix}")
 
     array_a, array_b = build_arrays(length)
 

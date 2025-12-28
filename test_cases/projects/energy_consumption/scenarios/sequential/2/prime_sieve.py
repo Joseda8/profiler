@@ -29,12 +29,14 @@ def sieve(limit: int) -> List[int]:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Sequential prime sieve benchmark.")
     parser.add_argument("--limit", type=int, default=1_000_000, help="Upper bound for the sieve.")
+    parser.add_argument("--run_idx", help="Optional run index to tag outputs.")
     args = parser.parse_args()
 
     limit = args.limit
     runtime_flavor = runtime_flavor_suffix()
+    run_suffix = f"run{args.run_idx}" if args.run_idx else ""
 
-    set_output_filename(filename=f"prime_sieve_{limit}_{runtime_flavor}")
+    set_output_filename(filename=f"prime_sieve_{limit}_{runtime_flavor}_{run_suffix}")
 
     set_tag("start_prime_sieve")
     primes = sieve(limit)

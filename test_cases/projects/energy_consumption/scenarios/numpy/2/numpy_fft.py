@@ -26,12 +26,14 @@ def run_fft(signal: np.ndarray) -> float:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="NumPy FFT benchmark.")
     parser.add_argument("--length", type=int, default=1_000_000, help="Length of the signal.")
+    parser.add_argument("--run_idx", help="Optional run index to tag outputs.")
     args = parser.parse_args()
 
     length = args.length
     runtime_flavor = runtime_flavor_suffix()
+    run_suffix = f"run{args.run_idx}" if args.run_idx else ""
 
-    set_output_filename(filename=f"numpy_fft_{length}_{runtime_flavor}")
+    set_output_filename(filename=f"numpy_fft_{length}_{runtime_flavor}_{run_suffix}")
 
     signal = build_signal(length)
 

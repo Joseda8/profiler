@@ -68,13 +68,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Text tokenization benchmark.")
     parser.add_argument("--num_workers", required=True, type=int, help="Number of worker threads.")
     parser.add_argument("--num_records", type=int, default=50000, help="Number of text records to tokenize.")
+    parser.add_argument("--run_idx", help="Optional run index to tag outputs.")
     args = parser.parse_args()
 
     num_workers = args.num_workers
     num_records = args.num_records
     runtime_flavor = runtime_flavor_suffix()
+    run_suffix = f"run{args.run_idx}" if args.run_idx else ""
 
-    set_output_filename(filename=f"text_tokenize_{num_workers}_{num_records}_{runtime_flavor}")
+    set_output_filename(filename=f"text_tokenize_{num_workers}_{num_records}_{runtime_flavor}_{run_suffix}")
 
     # Pre-build sentences; profiling should focus on tokenization, not data generation.
     sentences = build_sentences(num_records)

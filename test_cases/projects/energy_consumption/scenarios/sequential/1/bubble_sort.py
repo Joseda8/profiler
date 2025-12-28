@@ -38,12 +38,14 @@ def checksum(values: List[int]) -> int:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Sequential bubble sort benchmark.")
     parser.add_argument("--num_items", type=int, default=20000, help="Number of items to sort.")
+    parser.add_argument("--run_idx", help="Optional run index to tag outputs.")
     args = parser.parse_args()
 
     num_items = args.num_items
     runtime_flavor = runtime_flavor_suffix()
+    run_suffix = f"run{args.run_idx}" if args.run_idx else ""
 
-    set_output_filename(filename=f"bubble_sort_{num_items}_{runtime_flavor}")
+    set_output_filename(filename=f"bubble_sort_{num_items}_{runtime_flavor}_{run_suffix}")
 
     numbers = build_numbers(num_items)
 

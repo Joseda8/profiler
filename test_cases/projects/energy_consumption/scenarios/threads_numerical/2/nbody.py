@@ -149,14 +149,16 @@ if __name__ == "__main__":
     parser.add_argument("--num_workers", required=True, type=int, help="Number of worker threads.")
     parser.add_argument("--num_particles", type=int, default=400, help="Number of particles.")
     parser.add_argument("--num_steps", type=int, default=5, help="Number of simulation steps.")
+    parser.add_argument("--run_idx", help="Optional run index to tag outputs.")
     args = parser.parse_args()
 
     num_workers = args.num_workers
     num_particles = args.num_particles
     num_steps = args.num_steps
     runtime_flavor = runtime_flavor_suffix()
+    run_suffix = f"run{args.run_idx}" if args.run_idx else ""
 
-    set_output_filename(filename=f"nbody_{num_workers}_{num_particles}_{num_steps}_{runtime_flavor}")
+    set_output_filename(filename=f"nbody_{num_workers}_{num_particles}_{num_steps}_{runtime_flavor}_{run_suffix}")
 
     set_tag("start_nbody")
     checksum = run_nbody(num_particles=num_particles, num_steps=num_steps, num_workers=num_workers)

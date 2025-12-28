@@ -77,13 +77,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Parallel matrix multiplication benchmark.")
     parser.add_argument("--num_workers", required=True, type=int, help="Number of worker threads.")
     parser.add_argument("--matrix_size", type=int, default=256, help="Square matrix size (size x size).")
+    parser.add_argument("--run_idx", help="Optional run index to tag outputs.")
     args = parser.parse_args()
 
     num_workers = args.num_workers
     matrix_size = args.matrix_size
     runtime_flavor = runtime_flavor_suffix()
+    run_suffix = f"run{args.run_idx}" if args.run_idx else ""
 
-    set_output_filename(filename=f"matmul_{num_workers}_{matrix_size}_{runtime_flavor}")
+    set_output_filename(filename=f"matmul_{num_workers}_{matrix_size}_{runtime_flavor}_{run_suffix}")
 
     set_tag("start_matmul")
     checksum = run_matmul_benchmark(matrix_size=matrix_size, num_workers=num_workers)
