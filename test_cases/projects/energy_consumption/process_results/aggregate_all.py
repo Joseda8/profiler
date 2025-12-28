@@ -69,6 +69,8 @@ def collect_rows(pattern: str) -> List[Dict]:
         # Always try a generic combined summary search
         fallback_patterns.append("results/processed/*summary.csv")
         fallback_patterns.append("results/processed/*summary*.csv")
+        fallback_patterns.append("results/processed/summaries/*summary*.csv")
+        fallback_patterns.append("results/processed/aggregate/*summary*.csv")
 
         for fb in fallback_patterns:
             process_paths(glob.glob(fb))
@@ -222,7 +224,7 @@ def _generate_plots(df: pd.DataFrame, output_path: str) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Aggregate processed summaries into a single metrics file.")
     parser.add_argument("--pattern", default="results/processed/*summary*.csv", help="Glob pattern to match summary CSV files.")
-    parser.add_argument("--output_file", default="results/processed/all_metrics.csv", help="Path to write the aggregated metrics CSV.")
+    parser.add_argument("--output_file", default="results/processed/aggregate/all_metrics.csv", help="Path to write the aggregated metrics CSV.")
     args = parser.parse_args()
 
     aggregated_rows = collect_rows(pattern=args.pattern)

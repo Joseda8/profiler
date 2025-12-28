@@ -65,6 +65,7 @@ def stage_aggregate(files_stats: List[FileStats], output_path: str, task_label: 
             logger.warning(f"Failed to read existing output {output_path}: {excep}")
             existing_df = None
 
+    processed_root = os.path.abspath(os.path.join(os.path.dirname(output_path), ".."))
     csv_writer = FileWriterCsv(file_path=output_path)
     if existing_df is not None and not existing_df.empty:
         csv_writer.set_data_frame(existing_df)
@@ -121,7 +122,7 @@ def stage_aggregate(files_stats: List[FileStats], output_path: str, task_label: 
     cv_writer.append_row(["cpu_usage", _cv(csv_writer.df_data["cpu_usage"])])
     cv_writer.append_row(["vms", _cv(csv_writer.df_data["vms"])])
     cv_writer.append_row(["ram", _cv(csv_writer.df_data["ram"])])
-    cv_dir = os.path.join(os.path.dirname(output_path), "cvs")
+    cv_dir = os.path.join(processed_root, "cvs")
     os.makedirs(cv_dir, exist_ok=True)
     cv_writer._file_path = os.path.join(cv_dir, os.path.basename(cv_path))
     cv_writer.write_to_csv()
@@ -129,8 +130,11 @@ def stage_aggregate(files_stats: List[FileStats], output_path: str, task_label: 
 
     # Per-flavor summary and CVs (independent)
     if "flavor" in csv_writer.df_data.columns:
+        flavor_dir = os.path.dirname(output_path)
+        os.makedirs(flavor_dir, exist_ok=True)
         for flv, sub in csv_writer.df_data.groupby("flavor"):
-            flavor_summary_path = output_path.replace(".csv", f"_{flv}.csv")
+            base_name = os.path.splitext(os.path.basename(output_path))[0]
+            flavor_summary_path = os.path.join(flavor_dir, f"{base_name}_{flv}.csv")
             sub_sorted = sub.sort_values(by=[variant_column]).drop(columns=["flavor"], errors="ignore")
             flavor_writer = FileWriterCsv(file_path=flavor_summary_path)
             flavor_writer.set_data_frame(df=sub_sorted)
@@ -187,7 +191,8 @@ def _write_normalized(df: pd.DataFrame, output_path: str, variant_column: str) -
     base_cols = [variant_column] + ([c for c in ["flavor"] if c in df_norm.columns])
     metric_cols = [col for col in df_norm.columns if col not in base_cols and not col.endswith("_cv")]
 
-    norm_dir = os.path.join(os.path.dirname(output_path), "normalized")
+    processed_root = os.path.abspath(os.path.join(os.path.dirname(output_path), ".."))
+    norm_dir = os.path.join(processed_root, "normalized")
     os.makedirs(norm_dir, exist_ok=True)
     base_name = os.path.basename(output_path)
     energy_col = "energy_max"
