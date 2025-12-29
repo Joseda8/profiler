@@ -143,7 +143,7 @@ def stage_aggregate(
         if series.empty:
             return 0.0
         mean_val = series.mean()
-        return series.std() / mean_val if mean_val else 0.0
+        return series.std(ddof=0) / mean_val if mean_val else 0.0
 
     cv_path = output_path.replace(".csv", "_cv.csv")
     cv_writer = FileWriterCsv(file_path=cv_path)
@@ -183,12 +183,13 @@ def stage_aggregate(
             logger.info(f"Flavor CVs written to {flavor_cv_writer._file_path}")
 
     # Normalized file: set best (minimum) per metric as 1.0
-    _write_normalized(csv_writer.df_data, output_path, variant_column)
+    _write_normalized(csv_writer.df_data, output_path, variant_column, norm_root=processed_root)
 
     # Generate requested plots using DataPlotter
     graphs_dir = os.path.join(run_root, "graphs")
     plotter = DataPlotter(path_file_stats=output_path, folder_results=graphs_dir, group_by="flavor")
     plotter.plot_lines(x_column="uptime", y_columns=["energy_max"], title="Energy vs Uptime", annotate_variant=True, variant_column=variant_column)
+    plotter.plot_lines(x_column="uptime", y_columns=["cpu_usage"], title="CPU Usage vs Uptime", annotate_variant=True, variant_column=variant_column)
     plotter.plot_lines(x_column="cpu_usage", y_columns=["energy_max"], title="Energy vs CPU Usage", annotate_variant=True, variant_column=variant_column)
     if variant_column in plotter.stats_columns:
         plotter.plot_lines(x_column=variant_column, y_columns=["cpu_usage"], title="CPU Usage vs Variant")
@@ -207,7 +208,12 @@ def stage_plot_results(csv_writer: Optional[FileWriterCsv]) -> None:
     logger.info("Plotting stage handled during aggregation.")
 
 
-def _write_normalized(df: pd.DataFrame, output_path: str, variant_column: str) -> None:
+def _write_normalized(
+    df: pd.DataFrame,
+    output_path: str,
+    variant_column: str,
+    norm_root: Optional[str] = None,
+) -> None:
     """
     Normalize metrics so the best (minimum) value per column becomes 1.0.
     """
@@ -222,7 +228,9 @@ def _write_normalized(df: pd.DataFrame, output_path: str, variant_column: str) -
     base_cols = [variant_column] + [c for c in ["flavor", "run_id"] if c in df_norm.columns]
     metric_cols = [col for col in df_norm.columns if col not in base_cols and not col.endswith("_cv")]
 
-    processed_root = os.path.abspath(os.path.dirname(output_path))
+    processed_root = (
+        os.path.abspath(norm_root) if norm_root is not None else os.path.abspath(os.path.dirname(output_path))
+    )
     norm_dir = os.path.join(processed_root, "normalized")
     os.makedirs(norm_dir, exist_ok=True)
     base_name = os.path.basename(output_path)
@@ -276,6 +284,7 @@ if __name__ == "__main__":
     base_root = parent_dir if os.path.basename(output_dir) == "summaries" else output_dir
     os.makedirs(base_root, exist_ok=True)
 
+    run_results = []
     for rid, files in grouped.items():
         base_name = os.path.basename(args.output_file)
         run_dir = os.path.join(base_root, f"run{rid}") if rid is not None else base_root
@@ -292,3 +301,153 @@ if __name__ == "__main__":
             run_id=rid,
         )
         stage_plot_results(csv_writer)
+        if csv_writer is not None:
+            df_run = csv_writer.df_data
+            if "flavor" in df_run.columns:
+                df_run = df_run[df_run["flavor"] == args.flavor]
+            run_results.append((rid, df_run))
+
+    # Build combined (across runs) aggregation mirroring per-run structure
+    if run_results:
+        combined_df = pd.concat(
+            [
+                df.copy() if rid is None else df.copy()
+                for rid, df in run_results
+            ],
+            ignore_index=True,
+        )
+        if not combined_df.empty:
+            global_root = os.path.join(base_root, "combined")
+            summaries_dir = os.path.join(global_root, "summaries")
+            os.makedirs(summaries_dir, exist_ok=True)
+            base_name = os.path.basename(args.output_file)
+            output_path = os.path.join(summaries_dir, base_name)
+
+            existing_global = None
+            if os.path.exists(output_path):
+                try:
+                    existing_global = pd.read_csv(output_path)
+                    existing_global = existing_global[existing_global["flavor"] != args.flavor]
+                except Exception as excep:
+                    logger.warning(f"Failed to read existing combined output {output_path}: {excep}")
+                    existing_global = None
+
+            # Average metrics across runs per flavor and variant, and compute run-to-run CVs
+            metric_cols = ["uptime", "cpu_usage", "energy_max", "vms", "ram", "cores_disparity"]
+            records = []
+            for (flv, var_val), sub in combined_df.groupby(["flavor", args.variant_column]):
+                rec = {
+                    args.variant_column: var_val,
+                    "flavor": flv,
+                }
+                for col in metric_cols:
+                    if col not in sub.columns:
+                        continue
+                    mean_val = sub[col].mean()
+                    rec[col] = mean_val
+                    if col in {"cpu_usage", "vms", "ram"}:
+                        cv_val = sub[col].std(ddof=0) / mean_val if mean_val else 0.0
+                        rec[f"{col}_cv"] = cv_val
+                records.append(rec)
+
+            mean_df = pd.DataFrame(records)
+            ordered_cols = [
+                args.variant_column,
+                "flavor",
+                "uptime",
+                "cpu_usage",
+                "cpu_usage_cv",
+                "energy_max",
+                "vms",
+                "vms_cv",
+                "ram",
+                "ram_cv",
+                "cores_disparity",
+            ]
+            mean_df = mean_df[[c for c in ordered_cols if c in mean_df.columns]]
+            if existing_global is not None and not existing_global.empty:
+                mean_df = pd.concat([existing_global, mean_df], ignore_index=True)
+
+            csv_writer = FileWriterCsv(file_path=output_path)
+            csv_writer.set_data_frame(df=mean_df.sort_values(by=["flavor", args.variant_column]))
+            csv_writer.write_to_csv()
+            logger.info(f"Combined (all runs) summary written to {output_path}")
+
+            def _cv(series):
+                series = pd.to_numeric(series, errors="coerce").dropna()
+                if series.empty:
+                    return 0.0
+                mean_val = series.mean()
+                return series.std(ddof=0) / mean_val if mean_val else 0.0
+
+            cv_dir = os.path.join(global_root, "cvs")
+            os.makedirs(cv_dir, exist_ok=True)
+            cv_path = os.path.join(cv_dir, f"{os.path.splitext(base_name)[0]}_cv.csv")
+            cv_writer = FileWriterCsv(file_path=cv_path)
+            cv_writer.set_columns(["metric", "cv"])
+            cv_writer.append_row(["uptime", _cv(csv_writer.df_data["uptime"])])
+            cv_writer.append_row(["cpu_usage", _cv(csv_writer.df_data["cpu_usage"])])
+            cv_writer.append_row(["vms", _cv(csv_writer.df_data["vms"])])
+            cv_writer.append_row(["ram", _cv(csv_writer.df_data["ram"])])
+            cv_writer.write_to_csv()
+            logger.info(f"Combined CVs written to {cv_path}")
+
+            # Per-flavor summaries/CVs for combined
+            base_name_no_ext = os.path.splitext(os.path.basename(output_path))[0]
+            for flv, sub in csv_writer.df_data.groupby("flavor"):
+                flavor_summary_path = os.path.join(summaries_dir, f"{base_name_no_ext}_{flv}.csv")
+                sub_sorted = sub.sort_values(by=[args.variant_column]).drop(columns=["flavor"], errors="ignore")
+                flavor_writer = FileWriterCsv(file_path=flavor_summary_path)
+                flavor_writer.set_data_frame(df=sub_sorted)
+                flavor_writer.write_to_csv()
+                logger.info(f"Combined flavor summary written to {flavor_summary_path}")
+
+                flavor_cv_writer = FileWriterCsv(
+                    file_path=os.path.join(cv_dir, f"{os.path.splitext(os.path.basename(flavor_summary_path))[0]}_cv.csv")
+                )
+                flavor_cv_writer.set_columns(["metric", "cv"])
+                flavor_cv_writer.append_row(["uptime", _cv(sub["uptime"])])
+                flavor_cv_writer.append_row(["cpu_usage", _cv(sub["cpu_usage"])])
+                flavor_cv_writer.append_row(["vms", _cv(sub["vms"])])
+                flavor_cv_writer.append_row(["ram", _cv(sub["ram"])])
+                flavor_cv_writer.write_to_csv()
+                logger.info(f"Combined flavor CVs written to {flavor_cv_writer._file_path}")
+
+            # Normalized combined
+            _write_normalized(csv_writer.df_data, output_path, args.variant_column, norm_root=global_root)
+
+            # Graphs for combined
+            graphs_dir = os.path.join(global_root, "graphs")
+            plotter = DataPlotter(path_file_stats=output_path, folder_results=graphs_dir, group_by="flavor")
+            plotter.plot_lines(
+                x_column="uptime",
+                y_columns=["energy_max"],
+                title="Energy vs Uptime",
+                annotate_variant=True,
+                variant_column=args.variant_column,
+            )
+            plotter.plot_lines(
+                x_column="uptime",
+                y_columns=["cpu_usage"],
+                title="CPU Usage vs Uptime",
+                annotate_variant=True,
+                variant_column=args.variant_column,
+            )
+            plotter.plot_lines(
+                x_column="cpu_usage",
+                y_columns=["energy_max"],
+                title="Energy vs CPU Usage",
+                annotate_variant=True,
+                variant_column=args.variant_column,
+            )
+            if args.variant_column in plotter.stats_columns:
+                plotter.plot_lines(
+                    x_column=args.variant_column,
+                    y_columns=["cpu_usage"],
+                    title="CPU Usage vs Variant",
+                )
+                plotter.plot_lines(
+                    x_column=args.variant_column,
+                    y_columns=["vms", "ram"],
+                    title="Memory vs Variant",
+                )

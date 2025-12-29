@@ -29,6 +29,10 @@ def collect_rows(pattern: str) -> List[Dict]:
 
     def process_paths(paths: List[str]) -> None:
         for path in paths:
+            # Skip helper artifacts
+            parts = path.split(os.sep)
+            if any(part in {"normalized", "cvs", "graphs", "graphs_all"} for part in parts):
+                continue
             base = os.path.basename(path)
             if path.endswith("_cv.csv") or "_summary_gil" in base or "_summary_nogil" in base:
                 continue
@@ -57,7 +61,7 @@ def collect_rows(pattern: str) -> List[Dict]:
                         logger.warning(f"Skipping row in {path}: {excep}")
                         continue
 
-    paths = glob.glob(pattern)
+    paths = glob.glob(pattern, recursive=True)
     process_paths(paths)
 
     # Fallbacks if nothing useful was collected (e.g., pattern matched only skipped files)
@@ -66,14 +70,17 @@ def collect_rows(pattern: str) -> List[Dict]:
         if "summary_*" in pattern:
             fallback_patterns.append(pattern.replace("summary_*", "summary"))
             fallback_patterns.append(pattern.replace("summary_*", "summary*.csv"))
-        # Always try a generic combined summary search
+        # Prefer combined summaries if present
+        fallback_patterns.append("results/processed/combined/summaries/*summary*.csv")
+        # Then any run summaries
+        fallback_patterns.append("results/processed/*/summaries/*summary*.csv")
         fallback_patterns.append("results/processed/*summary.csv")
         fallback_patterns.append("results/processed/*summary*.csv")
-        fallback_patterns.append("results/processed/summaries/*summary*.csv")
         fallback_patterns.append("results/processed/aggregate/*summary*.csv")
+        fallback_patterns.append("results/processed/**/*.csv")
 
         for fb in fallback_patterns:
-            process_paths(glob.glob(fb))
+            process_paths(glob.glob(fb, recursive=True))
             if rows:
                 logger.info(f"Using fallback pattern '{fb}'")
                 break
@@ -86,6 +93,7 @@ def write_output(rows: List[Dict], output_path: str) -> None:
         logger.warning("No rows to write for aggregated metrics.")
         return
     df = pd.DataFrame(rows)
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
     writer = FileWriterCsv(file_path=output_path)
     writer.set_columns(
         [

@@ -1,7 +1,17 @@
+import os
 import pandas as pd
 
 def main():
-    df = pd.read_csv("results/processed/all_metrics.csv")
+    # Use the current aggregate location, with a fallback for older runs.
+    candidates = [
+        "results/processed/aggregate/all_metrics.csv",
+        "results/processed/all_metrics.csv",
+    ]
+    csv_path = next((p for p in candidates if os.path.exists(p)), None)
+    if not csv_path:
+        raise FileNotFoundError(f"None of the aggregate files found: {candidates}")
+
+    df = pd.read_csv(csv_path)
 
     # Select numeric columns for correlation
     numeric_cols = ["uptime", "cpu_usage", "energy_max", "vms", "ram", "cores_disparity"]
