@@ -20,13 +20,6 @@ def create_directory(directory: str) -> None:
     """
     Create all directories in the given path if they do not exist.
     """
-    # Check if the path exists and create it recursively if not
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-
-    # Check and create subdirectories recursively
-    current_path = ""
-    for dir_name in directory.split(os.path.sep):
-        current_path = os.path.join(current_path, dir_name)
-        if not os.path.exists(current_path):
-            os.mkdir(current_path)
+    if not directory:
+        return
+    os.makedirs(directory, exist_ok=True)

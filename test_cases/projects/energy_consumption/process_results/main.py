@@ -19,6 +19,14 @@ def _extract_variant(path: str, pattern: str) -> Optional[int]:
     return int(match.group(1)) if match and match.group(1) else None
 
 
+def _extract_run_id(path: str) -> Optional[str]:
+    """
+    Extract run id from filenames that contain `_run<id>_`.
+    """
+    match = re.search(r"_run([^_]+)_", os.path.basename(path))
+    return match.group(1) if match else None
+
+
 def stage_collect(pattern: str) -> List[FileStats]:
     """
     Gather all preprocessed files that match the glob pattern.
@@ -36,7 +44,15 @@ def stage_collect(pattern: str) -> List[FileStats]:
     return [FileStats(file_path=p) for p in paths]
 
 
-def stage_aggregate(files_stats: List[FileStats], output_path: str, task_label: str, variant_regex: str, variant_column: str, flavor: str) -> Optional[FileWriterCsv]:
+def stage_aggregate(
+    files_stats: List[FileStats],
+    output_path: str,
+    task_label: str,
+    variant_regex: str,
+    variant_column: str,
+    flavor: str,
+    run_id: Optional[str] = None,
+) -> Optional[FileWriterCsv]:
     """
     Aggregate metrics from each file into a single results CSV.
 
@@ -65,12 +81,19 @@ def stage_aggregate(files_stats: List[FileStats], output_path: str, task_label: 
             logger.warning(f"Failed to read existing output {output_path}: {excep}")
             existing_df = None
 
-    processed_root = os.path.abspath(os.path.join(os.path.dirname(output_path), ".."))
+    # Keep artifacts under the run root (parent of summaries)
+    summaries_dir = os.path.abspath(os.path.dirname(output_path))
+    run_root = os.path.abspath(os.path.join(summaries_dir, os.pardir))
+    processed_root = run_root
     csv_writer = FileWriterCsv(file_path=output_path)
     if existing_df is not None and not existing_df.empty:
         csv_writer.set_data_frame(existing_df)
     else:
-        csv_writer.set_columns([variant_column, "flavor", "uptime", "cpu_usage", "cpu_usage_cv", "energy_max", "vms", "vms_cv", "ram", "ram_cv", "cores_disparity"])
+        columns = [variant_column, "flavor"]
+        if run_id is not None:
+            columns.append("run_id")
+        columns += ["uptime", "cpu_usage", "cpu_usage_cv", "energy_max", "vms", "vms_cv", "ram", "ram_cv", "cores_disparity"]
+        csv_writer.set_columns(columns)
 
     for file in files_stats:
         variant_value = _extract_variant(file._file_path, variant_regex)
@@ -101,9 +124,16 @@ def stage_aggregate(files_stats: List[FileStats], output_path: str, task_label: 
         vms_cv = vms_std / vms if vms else 0
         ram_cv = ram_std / ram if ram else 0
 
-        csv_writer.append_row([variant_value, flavor, uptimes[task_label], cpu_usage, cpu_cv, energy_max, vms, vms_cv, ram, ram_cv, cores_disparity_avg])
+        row = [variant_value, flavor]
+        if run_id is not None:
+            row.append(run_id)
+        row += [uptimes[task_label], cpu_usage, cpu_cv, energy_max, vms, vms_cv, ram, ram_cv, cores_disparity_avg]
+        csv_writer.append_row(row)
 
-    csv_writer.order_by_columns(columns=["flavor", variant_column])
+    order_cols = ["flavor", variant_column]
+    if run_id is not None:
+        order_cols.append("run_id")
+    csv_writer.order_by_columns(columns=order_cols)
     csv_writer.write_to_csv()
     logger.info(f"Aggregated results written to {output_path}")
 
@@ -132,8 +162,8 @@ def stage_aggregate(files_stats: List[FileStats], output_path: str, task_label: 
     if "flavor" in csv_writer.df_data.columns:
         flavor_dir = os.path.dirname(output_path)
         os.makedirs(flavor_dir, exist_ok=True)
+        base_name = os.path.splitext(os.path.basename(output_path))[0]
         for flv, sub in csv_writer.df_data.groupby("flavor"):
-            base_name = os.path.splitext(os.path.basename(output_path))[0]
             flavor_summary_path = os.path.join(flavor_dir, f"{base_name}_{flv}.csv")
             sub_sorted = sub.sort_values(by=[variant_column]).drop(columns=["flavor"], errors="ignore")
             flavor_writer = FileWriterCsv(file_path=flavor_summary_path)
@@ -145,6 +175,7 @@ def stage_aggregate(files_stats: List[FileStats], output_path: str, task_label: 
                 file_path=os.path.join(cv_dir, f"{os.path.splitext(os.path.basename(flavor_summary_path))[0]}_cv.csv")
             )
             flavor_cv_writer.set_columns(["metric", "cv"])
+            flavor_cv_writer.append_row(["uptime", _cv(sub["uptime"])])
             flavor_cv_writer.append_row(["cpu_usage", _cv(sub["cpu_usage"])])
             flavor_cv_writer.append_row(["vms", _cv(sub["vms"])])
             flavor_cv_writer.append_row(["ram", _cv(sub["ram"])])
@@ -155,7 +186,7 @@ def stage_aggregate(files_stats: List[FileStats], output_path: str, task_label: 
     _write_normalized(csv_writer.df_data, output_path, variant_column)
 
     # Generate requested plots using DataPlotter
-    graphs_dir = os.path.join(os.path.dirname(output_path), "graphs")
+    graphs_dir = os.path.join(run_root, "graphs")
     plotter = DataPlotter(path_file_stats=output_path, folder_results=graphs_dir, group_by="flavor")
     plotter.plot_lines(x_column="uptime", y_columns=["energy_max"], title="Energy vs Uptime", annotate_variant=True, variant_column=variant_column)
     plotter.plot_lines(x_column="cpu_usage", y_columns=["energy_max"], title="Energy vs CPU Usage", annotate_variant=True, variant_column=variant_column)
@@ -188,10 +219,10 @@ def _write_normalized(df: pd.DataFrame, output_path: str, variant_column: str) -
     # Replace NaNs/zeros with 0.1 for normalization purposes only
     df_norm = df_norm.replace(0, 0.1).fillna(0.1)
 
-    base_cols = [variant_column] + ([c for c in ["flavor"] if c in df_norm.columns])
+    base_cols = [variant_column] + [c for c in ["flavor", "run_id"] if c in df_norm.columns]
     metric_cols = [col for col in df_norm.columns if col not in base_cols and not col.endswith("_cv")]
 
-    processed_root = os.path.abspath(os.path.join(os.path.dirname(output_path), ".."))
+    processed_root = os.path.abspath(os.path.dirname(output_path))
     norm_dir = os.path.join(processed_root, "normalized")
     os.makedirs(norm_dir, exist_ok=True)
     base_name = os.path.basename(output_path)
@@ -216,28 +247,6 @@ def _write_normalized(df: pd.DataFrame, output_path: str, variant_column: str) -
     norm_writer.write_to_csv()
     logger.info(f"Normalized results written to {norm_path}")
 
-    # Independent normalization per flavor (separate files), ordered by energy
-    if "flavor" in df_norm.columns:
-        for flv, subdf in df_norm.groupby("flavor"):
-            norm_flavor = subdf[[variant_column]].copy()
-            for col in metric_cols:
-                numeric = pd.to_numeric(subdf[col], errors="coerce")
-                numeric_filled = numeric.fillna(0.1).replace(0, 0.1)
-                if numeric_filled.empty:
-                    continue
-                min_val = numeric_filled.min()
-                norm_flavor[col] = numeric_filled / min_val if min_val else numeric_filled
-            sort_cols_flavor = ([energy_col] if energy_col in norm_flavor.columns else [])
-            norm_flavor = norm_flavor.sort_values(by=sort_cols_flavor)
-
-            norm_flavor_path = os.path.join(
-                norm_dir, f"{os.path.splitext(base_name)[0]}_{flv}.csv"
-            )
-            norm_flavor_writer = FileWriterCsv(file_path=norm_flavor_path)
-            norm_flavor_writer.set_data_frame(df=norm_flavor)
-            norm_flavor_writer.write_to_csv()
-            logger.info(f"Normalized results written to {norm_flavor_path}")
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Aggregate profiler results for energy consumption experiments.")
@@ -255,15 +264,31 @@ if __name__ == "__main__":
     # Collect result files
     stats_files = stage_collect(pattern=args.pattern)
 
-    # Aggregation
-    csv_writer = stage_aggregate(
-        files_stats=stats_files,
-        output_path=args.output_file,
-        task_label=args.task_label,
-        variant_regex=variant_regex,
-        variant_column=args.variant_column,
-        flavor=args.flavor,
-    )
+    # Group files by run_id in filename (if present)
+    grouped: dict[Optional[str], List[FileStats]] = {}
+    for fs in stats_files:
+        rid = _extract_run_id(fs._file_path)
+        grouped.setdefault(rid, []).append(fs)
 
-    # Plot results
-    stage_plot_results(csv_writer)
+    # Base root for runs; if caller uses a summaries path, place runs above it
+    output_dir = os.path.abspath(os.path.dirname(args.output_file))
+    parent_dir = os.path.abspath(os.path.join(output_dir, os.pardir))
+    base_root = parent_dir if os.path.basename(output_dir) == "summaries" else output_dir
+    os.makedirs(base_root, exist_ok=True)
+
+    for rid, files in grouped.items():
+        base_name = os.path.basename(args.output_file)
+        run_dir = os.path.join(base_root, f"run{rid}") if rid is not None else base_root
+        summaries_dir = os.path.join(run_dir, "summaries")
+        os.makedirs(summaries_dir, exist_ok=True)
+        out_path = os.path.join(summaries_dir, base_name)
+        csv_writer = stage_aggregate(
+            files_stats=files,
+            output_path=out_path,
+            task_label=args.task_label,
+            variant_regex=variant_regex,
+            variant_column=args.variant_column,
+            flavor=args.flavor,
+            run_id=rid,
+        )
+        stage_plot_results(csv_writer)

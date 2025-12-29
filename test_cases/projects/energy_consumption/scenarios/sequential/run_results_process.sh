@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # Process both flavors to build a single summary with a flavor column
-SUMMARY_DIR="results/processed/summaries"
+SUMMARY_DIR="results/processed"
 mkdir -p "$SUMMARY_DIR"
 for variant in gil nogil; do
   python3 -m test_cases.projects.energy_consumption.process_results.main --pattern "results/preprocessed/mandelbrot_*_${variant}_*_stats.csv" --output_file "$SUMMARY_DIR/sequential_mandelbrot_summary.csv" --task_label mandelbrot --variant_column size --flavor "$variant"
