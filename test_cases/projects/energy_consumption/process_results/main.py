@@ -192,6 +192,7 @@ def stage_aggregate(
     plotter.plot_lines(x_column="uptime", y_columns=["cpu_usage"], title="CPU Usage vs Uptime", annotate_variant=True, variant_column=variant_column)
     plotter.plot_lines(x_column="cpu_usage", y_columns=["energy_max"], title="Energy vs CPU Usage", annotate_variant=True, variant_column=variant_column)
     if variant_column in plotter.stats_columns:
+        plotter.plot_lines(x_column=variant_column, y_columns=["energy_max"], title="Energy vs Variant")
         plotter.plot_lines(x_column=variant_column, y_columns=["cpu_usage"], title="CPU Usage vs Variant")
         plotter.plot_lines(x_column=variant_column, y_columns=["vms", "ram"], title="Memory vs Variant")
 
@@ -419,35 +420,13 @@ if __name__ == "__main__":
             # Graphs for combined
             graphs_dir = os.path.join(global_root, "graphs")
             plotter = DataPlotter(path_file_stats=output_path, folder_results=graphs_dir, group_by="flavor")
-            plotter.plot_lines(
-                x_column="uptime",
-                y_columns=["energy_max"],
-                title="Energy vs Uptime",
-                annotate_variant=True,
-                variant_column=args.variant_column,
-            )
-            plotter.plot_lines(
-                x_column="uptime",
-                y_columns=["cpu_usage"],
-                title="CPU Usage vs Uptime",
-                annotate_variant=True,
-                variant_column=args.variant_column,
-            )
-            plotter.plot_lines(
-                x_column="cpu_usage",
-                y_columns=["energy_max"],
-                title="Energy vs CPU Usage",
-                annotate_variant=True,
-                variant_column=args.variant_column,
-            )
+
+            plotter.plot_lines(x_column="uptime", y_columns=["energy_max"], title="Energy vs Uptime", annotate_variant=True, variant_column=args.variant_column)
+            plotter.plot_lines(x_column="uptime", y_columns=["cpu_usage"], title="CPU Usage vs Uptime", annotate_variant=True, variant_column=args.variant_column)
+            plotter.plot_lines(x_column="cpu_usage", y_columns=["energy_max"], title="Energy vs CPU Usage", annotate_variant=True, variant_column=args.variant_column)
+
             if args.variant_column in plotter.stats_columns:
-                plotter.plot_lines(
-                    x_column=args.variant_column,
-                    y_columns=["cpu_usage"],
-                    title="CPU Usage vs Variant",
-                )
-                plotter.plot_lines(
-                    x_column=args.variant_column,
-                    y_columns=["vms", "ram"],
-                    title="Memory vs Variant",
-                )
+                plotter.plot_lines(x_column=args.variant_column, y_columns=["energy_max"], title="Energy vs Variant")
+                plotter.plot_lines(x_column=args.variant_column, y_columns=["uptime"], title="Uptime vs Variant")
+                plotter.plot_lines(x_column=args.variant_column, y_columns=["cpu_usage"], title="CPU Usage vs Variant")
+                plotter.plot_lines(x_column=args.variant_column, y_columns=["vms", "ram"], title="Memory vs Variant")
