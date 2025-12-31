@@ -257,6 +257,98 @@ def _write_normalized(
     logger.info(f"Normalized results written to {norm_path}")
 
 
+def _write_flavor_deltas(norm_path: str, variant_column: str) -> None:
+    """
+    Using a normalized combined file that has both gil and nogil rows, compute
+    average gil-vs-nogil differences across variants.
+    """
+    if not os.path.exists(norm_path):
+        return
+    df = pd.read_csv(norm_path)
+    if "flavor" not in df.columns:
+        return
+    flavors = set(df["flavor"].dropna().unique().tolist())
+    if not {"gil", "nogil"}.issubset(flavors):
+        return
+
+    metrics = [
+        col
+        for col in df.columns
+        if col not in {variant_column, "flavor", "run_id"} and not col.endswith("_cv")
+    ]
+
+    delta_data = {m: [] for m in metrics}
+    pct_data = {m: [] for m in metrics}
+    gil_vals = {m: [] for m in metrics}
+    nogil_vals = {m: [] for m in metrics}
+    counts = {m: 0 for m in metrics}
+
+    for _, sub in df.groupby(variant_column):
+        if set(sub["flavor"]) < {"gil", "nogil"}:
+            continue
+        gil_row = sub[sub["flavor"] == "gil"].iloc[0]
+        nogil_row = sub[sub["flavor"] == "nogil"].iloc[0]
+        for m in metrics:
+            gil_val = pd.to_numeric(gil_row[m], errors="coerce")
+            nogil_val = pd.to_numeric(nogil_row[m], errors="coerce")
+            if pd.isna(gil_val) or pd.isna(nogil_val):
+                continue
+            delta = gil_val - nogil_val
+            delta_data[m].append(delta)
+            if nogil_val:
+                pct_data[m].append(delta / nogil_val)
+            gil_vals[m].append(gil_val)
+            nogil_vals[m].append(nogil_val)
+            counts[m] += 1
+
+    rows = []
+    for m in metrics:
+        if not delta_data[m]:
+            continue
+        rows.append(
+            {
+                "metric": m,
+                "gil_mean": (sum(gil_vals[m]) / len(gil_vals[m])) if gil_vals[m] else None,
+                "nogil_mean": (sum(nogil_vals[m]) / len(nogil_vals[m])) if nogil_vals[m] else None,
+                "gil_minus_nogil_mean": sum(delta_data[m]) / len(delta_data[m]),
+                "gil_minus_nogil_pct_mean": (sum(pct_data[m]) / len(pct_data[m])) if pct_data[m] else None,
+                "pairs_count": counts[m],
+            }
+        )
+
+    if not rows:
+        return
+
+    out_path = os.path.join(
+        os.path.dirname(norm_path),
+        f"{os.path.splitext(os.path.basename(norm_path))[0]}_gil_vs_nogil.csv",
+    )
+    writer = FileWriterCsv(file_path=out_path)
+    writer.set_columns(
+        [
+            "metric",
+            "gil_mean",
+            "nogil_mean",
+            "gil_minus_nogil_mean",
+            "gil_minus_nogil_pct_mean",
+            "pairs_count",
+        ]
+    )
+    for r in rows:
+        writer.append_row(
+            [
+                r["metric"],
+                r["gil_mean"],
+                r["nogil_mean"],
+                r["gil_minus_nogil_mean"],
+                r["gil_minus_nogil_pct_mean"],
+                r["pairs_count"],
+            ]
+        )
+    writer.write_to_csv()
+    logger.info(f"Flavor delta summary written to {out_path}")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Aggregate profiler results for energy consumption experiments.")
     parser.add_argument("--pattern", required=True, help="Glob pattern to find preprocessed CSV files")
@@ -416,6 +508,11 @@ if __name__ == "__main__":
 
             # Normalized combined
             _write_normalized(csv_writer.df_data, output_path, args.variant_column, norm_root=global_root)
+            norm_path = os.path.join(global_root, "normalized", base_name)
+            if "flavor" in csv_writer.df_data.columns and {"gil", "nogil"}.issubset(
+                set(csv_writer.df_data["flavor"].dropna().unique().tolist())
+            ):
+                _write_flavor_deltas(norm_path=norm_path, variant_column=args.variant_column)
 
             # Graphs for combined
             graphs_dir = os.path.join(global_root, "graphs")
