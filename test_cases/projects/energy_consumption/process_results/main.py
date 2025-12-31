@@ -5,6 +5,7 @@ import re
 from typing import List, Optional
 
 import pandas as pd
+import numpy as np
 
 from src.client_interface.process_results import FileStats
 from ....util import FileWriterCsv, logger
@@ -44,15 +45,7 @@ def stage_collect(pattern: str) -> List[FileStats]:
     return [FileStats(file_path=p) for p in paths]
 
 
-def stage_aggregate(
-    files_stats: List[FileStats],
-    output_path: str,
-    task_label: str,
-    variant_regex: str,
-    variant_column: str,
-    flavor: str,
-    run_id: Optional[str] = None,
-) -> Optional[FileWriterCsv]:
+def stage_aggregate(files_stats: List[FileStats], output_path: str, task_label: str, variant_regex: str, variant_column: str, run_id: Optional[str] = None) -> Optional[FileWriterCsv]:
     """
     Aggregate metrics from each file into a single results CSV.
 
@@ -70,69 +63,49 @@ def stage_aggregate(
         logger.warning("No files to aggregate.")
         return None
 
+    # Define labels
     start_label, finish_label = f"start_{task_label}", f"finish_{task_label}"
-    # Load existing data (to allow merging gil/nogil into one file)
-    existing_df = None
-    if os.path.exists(output_path):
-        try:
-            existing_df = pd.read_csv(output_path)
-            existing_df = existing_df[existing_df["flavor"] != flavor]
-        except Exception as excep:
-            logger.warning(f"Failed to read existing output {output_path}: {excep}")
-            existing_df = None
 
     # Keep artifacts under the run root (parent of summaries)
     summaries_dir = os.path.abspath(os.path.dirname(output_path))
     run_root = os.path.abspath(os.path.join(summaries_dir, os.pardir))
     processed_root = run_root
     csv_writer = FileWriterCsv(file_path=output_path)
-    if existing_df is not None and not existing_df.empty:
-        csv_writer.set_data_frame(existing_df)
-    else:
-        columns = [variant_column, "flavor"]
-        if run_id is not None:
-            columns.append("run_id")
-        columns += ["uptime", "cpu_usage", "cpu_usage_cv", "energy_max", "vms", "vms_cv", "ram", "ram_cv", "cores_disparity"]
-        csv_writer.set_columns(columns)
 
+    # Process individual files
+    columns = [variant_column, "flavor"]
+    columns.append("run_id")
+    columns += ["uptime", "cpu_usage", "cpu_usage_cv", "energy_max", "vms", "vms_cv", "ram", "ram_cv", "cores_disparity"]
+    csv_writer.set_columns(columns)
     for file in files_stats:
+        # Flavor is encoded in the filename as either _gil_ or _nogil_
+        flavor_match = re.search(r"_(nogil|gil)_", os.path.basename(file._file_path))
+        flavor = flavor_match.group(1)
+
         variant_value = _extract_variant(file._file_path, variant_regex)
-        if variant_value is None:
-            logger.warning(f"Could not extract variant from {file._file_path}; skipping.")
-            continue
 
+        # Process file stats
         uptimes = file.get_times(start_label="start_", finish_label="finish_")
-        if task_label not in uptimes:
-            logger.warning(f"Missing task label '{task_label}' in {file._file_path}; skipping.")
-            continue
-
         averages = file.get_average_between_labels(start_label=start_label, finish_label=finish_label)
-        if averages is None:
-            logger.warning(f"Could not compute averages for {file._file_path}; skipping.")
-            continue
         cpu_usage, vms, ram, _ = averages
-        stds = file.get_std_between_labels(start_label=start_label, finish_label=finish_label)
-        if stds is None:
-            logger.warning(f"Could not compute stds for {file._file_path}; skipping.")
-            continue
-        cpu_usage_std, vms_std, ram_std = stds
+        standard_deviation = file.get_std_between_labels(start_label=start_label, finish_label=finish_label)
+        cpu_usage_std, vms_std, ram_std = standard_deviation
         _, _, _, _, _, _, _, energy_max = file.get_min_max_memory_stats(start_label=start_label, finish_label=finish_label)
         _, time_dominant_cores, cores_disparity_avg = file.track_dominant_core_changes_between_labels(start_label=start_label, finish_label=finish_label)
         _ = uptimes[task_label] - time_dominant_cores
 
+        # Compute coefficient of variation
         cpu_cv = cpu_usage_std / cpu_usage if cpu_usage else 0
         vms_cv = vms_std / vms if vms else 0
         ram_cv = ram_std / ram if ram else 0
 
         row = [variant_value, flavor]
-        if run_id is not None:
-            row.append(run_id)
+        row.append(run_id)
         row += [uptimes[task_label], cpu_usage, cpu_cv, energy_max, vms, vms_cv, ram, ram_cv, cores_disparity_avg]
         csv_writer.append_row(row)
 
     order_cols = ["flavor", variant_column]
-    if run_id is not None:
-        order_cols.append("run_id")
+    order_cols.append("run_id")
     csv_writer.order_by_columns(columns=order_cols)
     csv_writer.write_to_csv()
     logger.info(f"Aggregated results written to {output_path}")
@@ -158,31 +131,20 @@ def stage_aggregate(
     cv_writer.write_to_csv()
     logger.info(f"Global CVs written to {cv_writer._file_path}")
 
-    # Per-flavor summary and CVs (independent)
-    if "flavor" in csv_writer.df_data.columns:
-        flavor_dir = os.path.dirname(output_path)
-        os.makedirs(flavor_dir, exist_ok=True)
-        base_name = os.path.splitext(os.path.basename(output_path))[0]
-        for flv, sub in csv_writer.df_data.groupby("flavor"):
-            flavor_summary_path = os.path.join(flavor_dir, f"{base_name}_{flv}.csv")
-            sub_sorted = sub.sort_values(by=[variant_column]).drop(columns=["flavor"], errors="ignore")
-            flavor_writer = FileWriterCsv(file_path=flavor_summary_path)
-            flavor_writer.set_data_frame(df=sub_sorted)
-            flavor_writer.write_to_csv()
-            logger.info(f"Flavor summary written to {flavor_summary_path}")
+    # Per-flavor CVs
+    base_name = os.path.splitext(os.path.basename(output_path))[0]
+    task_prefix = base_name.removesuffix("_summary")
+    for flv, sub in csv_writer.df_data.groupby("flavor"):
+        flavor_cv_writer = FileWriterCsv(file_path=os.path.join(cv_dir, f"{task_prefix}_{flv}_summary_cv.csv"))
+        flavor_cv_writer.set_columns(["metric", "cv"])
+        flavor_cv_writer.append_row(["uptime", _cv(sub["uptime"])])
+        flavor_cv_writer.append_row(["cpu_usage", _cv(sub["cpu_usage"])])
+        flavor_cv_writer.append_row(["vms", _cv(sub["vms"])])
+        flavor_cv_writer.append_row(["ram", _cv(sub["ram"])])
+        flavor_cv_writer.write_to_csv()
+        logger.info(f"Per-flavor CVs written to {flavor_cv_writer._file_path}")
 
-            flavor_cv_writer = FileWriterCsv(
-                file_path=os.path.join(cv_dir, f"{os.path.splitext(os.path.basename(flavor_summary_path))[0]}_cv.csv")
-            )
-            flavor_cv_writer.set_columns(["metric", "cv"])
-            flavor_cv_writer.append_row(["uptime", _cv(sub["uptime"])])
-            flavor_cv_writer.append_row(["cpu_usage", _cv(sub["cpu_usage"])])
-            flavor_cv_writer.append_row(["vms", _cv(sub["vms"])])
-            flavor_cv_writer.append_row(["ram", _cv(sub["ram"])])
-            flavor_cv_writer.write_to_csv()
-            logger.info(f"Flavor CVs written to {flavor_cv_writer._file_path}")
-
-    # Normalized file: set best (minimum) per metric as 1.0
+    # Normalize file
     _write_normalized(csv_writer.df_data, output_path, variant_column, norm_root=processed_root)
 
     # Generate requested plots using DataPlotter
@@ -199,29 +161,10 @@ def stage_aggregate(
     return csv_writer
 
 
-def stage_plot_results(csv_writer: Optional[FileWriterCsv]) -> None:
-    """
-    Placeholder for plotting stage. Extend this to generate graphs from csv_writer.df_data.
-    """
-    if csv_writer is None:
-        logger.warning("No data available for plotting stage.")
-        return
-    logger.info("Plotting stage handled during aggregation.")
-
-
-def _write_normalized(
-    df: pd.DataFrame,
-    output_path: str,
-    variant_column: str,
-    norm_root: Optional[str] = None,
-) -> None:
+def _write_normalized(df: pd.DataFrame, output_path: str, variant_column: str, norm_root: Optional[str] = None) -> None:
     """
     Normalize metrics so the best (minimum) value per column becomes 1.0.
     """
-    if df.empty:
-        logger.warning("No data to normalize.")
-        return
-
     df_norm = df.copy()
     # Replace NaNs/zeros with 0.1 for normalization purposes only
     df_norm = df_norm.replace(0, 0.1).fillna(0.1)
@@ -282,6 +225,7 @@ def _write_flavor_deltas(norm_path: str, variant_column: str) -> None:
     gil_vals = {m: [] for m in metrics}
     nogil_vals = {m: [] for m in metrics}
     counts = {m: 0 for m in metrics}
+    rng = np.random.default_rng(0)
 
     for _, sub in df.groupby(variant_column):
         if set(sub["flavor"]) < {"gil", "nogil"}:
@@ -312,7 +256,6 @@ def _write_flavor_deltas(norm_path: str, variant_column: str) -> None:
                 "nogil_mean": (sum(nogil_vals[m]) / len(nogil_vals[m])) if nogil_vals[m] else None,
                 "gil_minus_nogil_mean": sum(delta_data[m]) / len(delta_data[m]),
                 "gil_minus_nogil_pct_mean": (sum(pct_data[m]) / len(pct_data[m])) if pct_data[m] else None,
-                "pairs_count": counts[m],
             }
         )
 
@@ -331,7 +274,6 @@ def _write_flavor_deltas(norm_path: str, variant_column: str) -> None:
             "nogil_mean",
             "gil_minus_nogil_mean",
             "gil_minus_nogil_pct_mean",
-            "pairs_count",
         ]
     )
     for r in rows:
@@ -342,7 +284,6 @@ def _write_flavor_deltas(norm_path: str, variant_column: str) -> None:
                 r["nogil_mean"],
                 r["gil_minus_nogil_mean"],
                 r["gil_minus_nogil_pct_mean"],
-                r["pairs_count"],
             ]
         )
     writer.write_to_csv()
@@ -356,12 +297,11 @@ if __name__ == "__main__":
     parser.add_argument("--task_label", required=True, help="Task label used in tags (start_<label>, finish_<label>)")
     parser.add_argument("--variant_column", required=True, help="Column name for the varying parameter")
     parser.add_argument("--variant_regex", help="Regex capture group for variant; defaults to f'{task_label}_(\\d+)_'.")
-    parser.add_argument("--flavor", required=True, help="Execution flavor (e.g., gil or nogil)")
     args = parser.parse_args()
 
     # Build pipeline inputs
     variant_regex = args.variant_regex or rf"{args.task_label}_(\d+)_"
-    
+
     # Collect result files
     stats_files = stage_collect(pattern=args.pattern)
 
@@ -371,7 +311,7 @@ if __name__ == "__main__":
         rid = _extract_run_id(fs._file_path)
         grouped.setdefault(rid, []).append(fs)
 
-    # Base root for runs; if caller uses a summaries path, place runs above it
+    # Base root for runs
     output_dir = os.path.abspath(os.path.dirname(args.output_file))
     parent_dir = os.path.abspath(os.path.join(output_dir, os.pardir))
     base_root = parent_dir if os.path.basename(output_dir) == "summaries" else output_dir
@@ -384,23 +324,11 @@ if __name__ == "__main__":
         summaries_dir = os.path.join(run_dir, "summaries")
         os.makedirs(summaries_dir, exist_ok=True)
         out_path = os.path.join(summaries_dir, base_name)
-        csv_writer = stage_aggregate(
-            files_stats=files,
-            output_path=out_path,
-            task_label=args.task_label,
-            variant_regex=variant_regex,
-            variant_column=args.variant_column,
-            flavor=args.flavor,
-            run_id=rid,
-        )
-        stage_plot_results(csv_writer)
-        if csv_writer is not None:
-            df_run = csv_writer.df_data
-            if "flavor" in df_run.columns:
-                df_run = df_run[df_run["flavor"] == args.flavor]
-            run_results.append((rid, df_run))
+        csv_writer = stage_aggregate(files_stats=files, output_path=out_path, task_label=args.task_label, variant_regex=variant_regex, variant_column=args.variant_column, run_id=rid)
+        df_run = csv_writer.df_data
+        run_results.append((rid, df_run))
 
-    # Build combined (across runs) aggregation mirroring per-run structure
+    # Build combined
     if run_results:
         combined_df = pd.concat(
             [
@@ -416,15 +344,6 @@ if __name__ == "__main__":
             base_name = os.path.basename(args.output_file)
             output_path = os.path.join(summaries_dir, base_name)
 
-            existing_global = None
-            if os.path.exists(output_path):
-                try:
-                    existing_global = pd.read_csv(output_path)
-                    existing_global = existing_global[existing_global["flavor"] != args.flavor]
-                except Exception as excep:
-                    logger.warning(f"Failed to read existing combined output {output_path}: {excep}")
-                    existing_global = None
-
             # Average metrics across runs per flavor and variant, and compute run-to-run CVs
             metric_cols = ["uptime", "cpu_usage", "energy_max", "vms", "ram", "cores_disparity"]
             records = []
@@ -438,16 +357,17 @@ if __name__ == "__main__":
                         continue
                     mean_val = sub[col].mean()
                     rec[col] = mean_val
-                    if col in {"cpu_usage", "vms", "ram"}:
+                    if col in {"uptime", "cpu_usage", "vms", "ram"}:
                         cv_val = sub[col].std(ddof=0) / mean_val if mean_val else 0.0
                         rec[f"{col}_cv"] = cv_val
                 records.append(rec)
 
-            mean_df = pd.DataFrame(records)
+            df_mean = pd.DataFrame(records)
             ordered_cols = [
                 args.variant_column,
                 "flavor",
                 "uptime",
+                "uptime_cv",
                 "cpu_usage",
                 "cpu_usage_cv",
                 "energy_max",
@@ -457,12 +377,10 @@ if __name__ == "__main__":
                 "ram_cv",
                 "cores_disparity",
             ]
-            mean_df = mean_df[[c for c in ordered_cols if c in mean_df.columns]]
-            if existing_global is not None and not existing_global.empty:
-                mean_df = pd.concat([existing_global, mean_df], ignore_index=True)
 
+            df_mean = df_mean[[c for c in ordered_cols if c in df_mean.columns]]
             csv_writer = FileWriterCsv(file_path=output_path)
-            csv_writer.set_data_frame(df=mean_df.sort_values(by=["flavor", args.variant_column]))
+            csv_writer.set_data_frame(df=df_mean.sort_values(by=["flavor", args.variant_column]))
             csv_writer.write_to_csv()
             logger.info(f"Combined (all runs) summary written to {output_path}")
 
@@ -489,15 +407,7 @@ if __name__ == "__main__":
             base_name_no_ext = os.path.splitext(os.path.basename(output_path))[0]
             for flv, sub in csv_writer.df_data.groupby("flavor"):
                 flavor_summary_path = os.path.join(summaries_dir, f"{base_name_no_ext}_{flv}.csv")
-                sub_sorted = sub.sort_values(by=[args.variant_column]).drop(columns=["flavor"], errors="ignore")
-                flavor_writer = FileWriterCsv(file_path=flavor_summary_path)
-                flavor_writer.set_data_frame(df=sub_sorted)
-                flavor_writer.write_to_csv()
-                logger.info(f"Combined flavor summary written to {flavor_summary_path}")
-
-                flavor_cv_writer = FileWriterCsv(
-                    file_path=os.path.join(cv_dir, f"{os.path.splitext(os.path.basename(flavor_summary_path))[0]}_cv.csv")
-                )
+                flavor_cv_writer = FileWriterCsv(file_path=os.path.join(cv_dir, f"{os.path.splitext(os.path.basename(flavor_summary_path))[0]}_cv.csv"))
                 flavor_cv_writer.set_columns(["metric", "cv"])
                 flavor_cv_writer.append_row(["uptime", _cv(sub["uptime"])])
                 flavor_cv_writer.append_row(["cpu_usage", _cv(sub["cpu_usage"])])
@@ -509,10 +419,7 @@ if __name__ == "__main__":
             # Normalized combined
             _write_normalized(csv_writer.df_data, output_path, args.variant_column, norm_root=global_root)
             norm_path = os.path.join(global_root, "normalized", base_name)
-            if "flavor" in csv_writer.df_data.columns and {"gil", "nogil"}.issubset(
-                set(csv_writer.df_data["flavor"].dropna().unique().tolist())
-            ):
-                _write_flavor_deltas(norm_path=norm_path, variant_column=args.variant_column)
+            _write_flavor_deltas(norm_path=norm_path, variant_column=args.variant_column)
 
             # Graphs for combined
             graphs_dir = os.path.join(global_root, "graphs")
