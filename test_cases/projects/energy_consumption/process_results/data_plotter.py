@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Sequence
 import os
 
 from matplotlib.figure import Figure
@@ -17,14 +17,14 @@ class DataPlotter:
     Class to plot graphs based on test data stored in a CSV file.
     """
 
-    def __init__(self, path_file_stats: str, folder_results: str, group_by: Optional[str] = None):
+    def __init__(self, path_file_stats: str, folder_results: str, group_by: Optional[Sequence[str] | str] = None):
         """
         Initialize DataPlotter.
 
         Args:
             path_file_stats (str): Path to the path with the stats to graph.
             folder_results (str): Folder to store the graphs.
-            group_by (str, optional): Column to group data by for plotting.
+            group_by (str | sequence, optional): Column(s) to group data by for plotting.
         """
         self._path_file_stats = path_file_stats
         self._file_stats_name = os.path.basename(self._path_file_stats).replace(".csv", "")
@@ -32,7 +32,14 @@ class DataPlotter:
 
         # DataFrame of the stats
         self._df = pd.read_csv(path_file_stats)
-        self._group_by = group_by if group_by and group_by in self._df.columns else None
+        self._group_by = None
+        if group_by:
+            if isinstance(group_by, str):
+                if group_by in self._df.columns:
+                    self._group_by = [group_by]
+            elif isinstance(group_by, (list, tuple)):
+                if all(col in self._df.columns for col in group_by):
+                    self._group_by = list(group_by)
         self._df_grouped = self._df.groupby(self._group_by) if self._group_by else None
         self._num_records = []
         if "num_records" in self._df.columns:
@@ -118,11 +125,45 @@ class DataPlotter:
         Plot multiple lines against a shared x axis.
         """
         plt.figure(figsize=(12, 8))
+        # Warm vs cold palettes: warm for gil, cold for nogil; vary per run_id
+        warm_palette = ["#ffd700", "#ff0000", "#ff69b4"]  # yellow, red, pink
+        cold_palette = ["#1f77b4", "#2ca02c", "#c0c0c0"]  # blue, green, silver
+        warm_idx = 0
+        cold_idx = 0
+        marker_cycle = ["o", "s", "D", "^", "v", "P"]
+        marker_map: dict[str, str] = {}
+        color_map: dict[tuple[str, str], str] = {}
+
         if self._df_grouped is not None:
             for group_name, group in self._df_grouped:
                 group = group.sort_values(by=x_column)
+                # Determine a marker per run_id (if present)
+                marker = None
+                if "run_id" in group.columns:
+                    run_key = str(group["run_id"].iloc[0])
+                    marker = marker_map.setdefault(run_key, marker_cycle[len(marker_map) % len(marker_cycle)])
+                flavor = group["flavor"].iloc[0] if "flavor" in group.columns else None
+                label_prefix = " ".join(str(g) for g in group_name) if isinstance(group_name, tuple) else str(group_name)
+                # Assign a color per run_id within flavor
+                color_key = (flavor or "unknown", run_key)
+                if flavor == "gil":
+                    if color_key not in color_map:
+                        color_map[color_key] = warm_palette[warm_idx % len(warm_palette)]
+                        warm_idx += 1
+                elif flavor == "nogil":
+                    if color_key not in color_map:
+                        color_map[color_key] = cold_palette[cold_idx % len(cold_palette)]
+                        cold_idx += 1
+                color = color_map.get(color_key, "#555555")
                 for y in y_columns:
-                    plt.plot(group[x_column], group[y], marker="o", linestyle="-", label=f"{group_name} {y}")
+                    plt.plot(
+                        group[x_column],
+                        group[y],
+                        marker=marker or "o",
+                        linestyle="-",
+                        color=color,
+                        label=f"{label_prefix} {y}" if len(y_columns) > 1 else label_prefix,
+                    )
                     if annotate_variant and variant_column and variant_column in group.columns:
                         for _, row in group.iterrows():
                             raw_val = row[variant_column]

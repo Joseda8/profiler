@@ -126,26 +126,7 @@ def write_output(rows: List[Dict], output_path: str) -> None:
         )
     writer.write_to_csv()
     logger.info(f"Aggregated metrics written to {output_path}")
-    _write_global_cvs(df, output_path)
     _generate_plots(df, output_path)
-
-
-def _write_global_cvs(df: pd.DataFrame, output_path: str) -> None:
-    def _cv(series: pd.Series) -> float:
-        series = pd.to_numeric(series, errors="coerce").dropna()
-        if series.empty:
-            return 0.0
-        mean_val = series.mean()
-        return series.std() / mean_val if mean_val else 0.0
-
-    cv_path = os.path.join(os.path.dirname(output_path), "cvs", f"{os.path.splitext(os.path.basename(output_path))[0]}_cv.csv")
-    cv_writer = FileWriterCsv(file_path=cv_path)
-    cv_writer.set_columns(["metric", "cv"])
-    for metric in ["cpu_usage", "vms", "ram"]:
-        if metric in df.columns:
-            cv_writer.append_row([metric, _cv(df[metric])])
-    cv_writer.write_to_csv()
-    logger.info(f"Aggregated global CVs written to {cv_path}")
 
 
 def _generate_plots(df: pd.DataFrame, output_path: str) -> None:
@@ -184,42 +165,6 @@ def _generate_plots(df: pd.DataFrame, output_path: str) -> None:
         plt.title(title)
         plt.grid(True)
         save(filename)
-
-    # Thread scaling per scenario: uptime and energy_max vs variant_value
-    for scenario, group in df.groupby("scenario"):
-        if group["variant_value"].isna().all():
-            continue
-        group = group.sort_values(by="variant_value")
-        plt.figure(figsize=(10, 7))
-        for flavor, sub in group.groupby("flavor"):
-            plt.plot(sub["variant_value"], sub["uptime"], marker="o", linestyle="-", label=f"{flavor} uptime")
-            plt.plot(sub["variant_value"], sub["energy_max"], marker="o", linestyle="--", label=f"{flavor} energy_max")
-            for _, row in sub.iterrows():
-                label_val = fmt_variant(row.get("variant_value", ""))
-                plt.annotate(label_val, (row["variant_value"], row["uptime"]), textcoords="offset points", xytext=(4, 4), fontsize=6)
-                plt.annotate(label_val, (row["variant_value"], row["energy_max"]), textcoords="offset points", xytext=(4, 4), fontsize=6)
-        plt.xlabel("variant_value")
-        plt.ylabel("value")
-        plt.title(f"Scaling for {scenario}")
-        plt.legend(loc="best", fontsize=8)
-        plt.grid(True)
-        save(f"scaling_{scenario}.png")
-
-        # Memory scaling (vms and ram) per scenario
-        plt.figure(figsize=(10, 7))
-        for flavor, sub in group.groupby("flavor"):
-            plt.plot(sub["variant_value"], sub["vms"], marker="o", linestyle="-", label=f"{flavor} vms")
-            plt.plot(sub["variant_value"], sub["ram"], marker="o", linestyle="--", label=f"{flavor} ram")
-            for _, row in sub.iterrows():
-                label_val = fmt_variant(row.get("variant_value", ""))
-                plt.annotate(label_val, (row["variant_value"], row["vms"]), textcoords="offset points", xytext=(4, 4), fontsize=6)
-                plt.annotate(label_val, (row["variant_value"], row["ram"]), textcoords="offset points", xytext=(4, 4), fontsize=6)
-        plt.xlabel("variant_value")
-        plt.ylabel("value")
-        plt.title(f"Memory Scaling for {scenario}")
-        plt.legend(loc="best", fontsize=8)
-        plt.grid(True)
-        save(f"scaling_memory_{scenario}.png")
 
     # Global (scenario-agnostic) scatter plots
     scatter_all("uptime", "energy_max", "Energy vs Uptime (All)", "energy_vs_uptime_all.png")
