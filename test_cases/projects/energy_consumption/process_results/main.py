@@ -17,6 +17,16 @@ COMBINED_DIRNAME = "combined"
 RATIOS_DIRNAME = "ratios"
 NORMALIZED_DIRNAME = "normalized"
 
+# Two-sided 95% critical values for Student's t by degrees of freedom
+T_CRITICAL_95 = {
+    1: 12.706, 2: 4.303, 3: 3.182, 4: 2.776, 5: 2.571,
+    6: 2.447, 7: 2.365, 8: 2.306, 9: 2.262, 10: 2.228,
+    11: 2.201, 12: 2.179, 13: 2.160, 14: 2.145, 15: 2.131,
+    16: 2.120, 17: 2.110, 18: 2.101, 19: 2.093, 20: 2.086,
+    21: 2.080, 22: 2.074, 23: 2.069, 24: 2.064, 25: 2.060,
+    26: 2.056, 27: 2.052, 28: 2.048, 29: 2.045, 30: 2.042,
+}
+
 # Filename helpers
 def _extract_variant(path: str, pattern: str) -> Optional[int]:
     match = re.search(pattern, os.path.basename(path))
@@ -204,8 +214,11 @@ def _compute_per_run_ratios(df: pd.DataFrame, variant_column: str) -> pd.DataFra
 
     return pd.DataFrame(rows).sort_values(by=["run_id", variant_column]).reset_index(drop=True)
 
+def _t_multiplier(sample_count: int) -> float:
+    df = sample_count - 1
+    return T_CRITICAL_95[df]
 
-def _compute_ratio_confidence(per_run_ratios: pd.DataFrame, variant_column: str, t_value: float = 4.303) -> pd.DataFrame:
+def _compute_ratio_confidence(per_run_ratios: pd.DataFrame, variant_column: str) -> pd.DataFrame:
     # Compute geometric mean ratios and 95% CIs in log space, per variant
     metric_columns = [
         column_name
@@ -220,8 +233,8 @@ def _compute_ratio_confidence(per_run_ratios: pd.DataFrame, variant_column: str,
             mean_log = log_values.mean()
             sd_log = log_values.std(ddof=1) if len(log_values) > 1 else 0.0
             se_log = sd_log / math.sqrt(len(log_values)) if len(log_values) else 0.0
-            # single sample => no CI width
-            t_multiplier = t_value if len(log_values) > 1 else 0.0
+            # Student's t adapts to the number of runs
+            t_multiplier = _t_multiplier(len(log_values))
             ci_low_log = mean_log - t_multiplier * se_log
             ci_high_log = mean_log + t_multiplier * se_log
             rows.append(
