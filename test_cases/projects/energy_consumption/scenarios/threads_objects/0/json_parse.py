@@ -5,10 +5,12 @@ Threaded JSON parsing benchmark for energy consumption tests.
 import argparse
 import concurrent.futures
 import json
+import time
 from typing import Iterable, List, Tuple
 
 from src.client_interface import set_output_filename, set_tag
 from test_cases.util import runtime_flavor_suffix
+
 
 def chunk_indices(total_items: int, num_workers: int) -> Iterable[Tuple[int, int]]:
     """Yield (start, end) index pairs that partition the items across workers."""
@@ -23,49 +25,64 @@ def chunk_indices(total_items: int, num_workers: int) -> Iterable[Tuple[int, int
 
 def build_payloads(num_records: int) -> List[str]:
     """
-    Generate synthetic JSON payloads (no external data dependency) for parsing.
+    Generate synthetic JSON payloads for parsing.
     """
-    payloads: List[str] = []
-    for record_index in range(num_records):
-        record = {
-            "id": record_index,
-            "dob": {"age": (record_index % 90) + 10},
-            "active": record_index % 3 == 0,
-        }
-        payloads.append(json.dumps(record))
-    return payloads
+    # Local binding
+    dumps = json.dumps
+    return [
+        dumps(
+            {
+                "id": idx,
+                "dob": {"age": (idx % 90) + 10},
+                "active": (idx % 3) == 0,
+                "scores": {"math": (idx % 50) / 10, "lang": (idx % 40) / 10},
+                "tags": [f"tag{idx % 5}", f"group{idx % 7}"],
+                "meta": {"source": "synthetic", "epoch": idx // 1000},
+            }
+        )
+        for idx in range(num_records)
+    ]
 
 
-def parse_slice(start_index: int, end_index: int, payloads: List[str]) -> Tuple[int, int]:
+def parse_slice(start_index: int, end_index: int, payloads: List[str]) -> None:
     """
-    Parse a slice of JSON payloads and accumulate simple stats.
-
-    We count records and sum ages to keep the workload deterministic.
+    Parse a slice of JSON payloads and exercise dict-heavy access/mutation:
+    - nested reads for ages/scores/tags
+    - dict merges and updates
+    - JSON round-trips on derived dicts
     """
-    record_count = 0
-    age_sum = 0
+    age_buckets: dict[int, int] = {}
     for payload in payloads[start_index:end_index]:
         record = json.loads(payload)
-        record_count += 1
-        age_sum += int(record.get("dob", {}).get("age", 0))
-    return record_count, age_sum
+        age = int(record.get("dob", {}).get("age", 0))
+        tags = record.get("tags", [])
+        scores = record.get("scores", {})
+        meta = record.get("meta", {}).copy()
+
+        meta["age_bucket"] = age // 10
+        meta["tag_count"] = len(tags)
+        age_buckets[meta["age_bucket"]] = age_buckets.get(meta["age_bucket"], 0) + 1
+
+        merged = {**scores, "age": age, "active": record.get("active", False), **meta}
+        merged.setdefault("checksum", record["id"] ^ age)
+
+        # Round-trip derived dict to JSON to stress encode/decode paths
+        json.loads(json.dumps(merged))
+    return
 
 
 def run_parse_benchmark(payloads: List[str], num_workers: int) -> int:
-    """Parse a shared payload list in parallel and return a checksum."""
+    """Parse a shared payload list in parallel."""
     num_records = len(payloads)
-    results: List[Tuple[int, int]] = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
         futures = [
             executor.submit(parse_slice, start_index, end_index, payloads)
             for start_index, end_index in chunk_indices(num_records, num_workers)
         ]
         for future in concurrent.futures.as_completed(futures):
-            results.append(future.result())
+            future.result()
 
-    record_total = sum(count for count, _ in results)
-    age_total = sum(age for _, age in results)
-    return record_total + age_total
+    return
 
 
 if __name__ == "__main__":
@@ -84,10 +101,9 @@ if __name__ == "__main__":
 
     # Pre-build payloads
     payloads = build_payloads(num_records)
+    time.sleep(3)
 
     # Profile only the parsing phase.
     set_tag("start_json_parse")
-    checksum = run_parse_benchmark(payloads=payloads, num_workers=num_workers)
+    run_parse_benchmark(payloads=payloads, num_workers=num_workers)
     set_tag("finish_json_parse")
-
-    print(f"checksum: {checksum}")

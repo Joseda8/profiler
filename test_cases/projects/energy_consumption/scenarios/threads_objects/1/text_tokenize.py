@@ -4,11 +4,27 @@ Threaded text tokenization benchmark for energy consumption tests.
 
 import argparse
 import concurrent.futures
+import time
 from collections import Counter
 from typing import Iterable, List, Tuple
 
 from src.client_interface import set_output_filename, set_tag
 from test_cases.util import runtime_flavor_suffix
+
+STOPWORDS = {
+    "a",
+    "an",
+    "the",
+    "and",
+    "or",
+    "of",
+    "to",
+    "in",
+    "on",
+    "for",
+    "with",
+    "without",
+}
 
 
 def chunk_indices(total_items: int, num_workers: int) -> Iterable[Tuple[int, int]]:
@@ -22,32 +38,30 @@ def chunk_indices(total_items: int, num_workers: int) -> Iterable[Tuple[int, int
         yield start_index, end_index
 
 
-def build_sentences(num_records: int) -> List[str]:
-    """Generate synthetic sentences for tokenization."""
-    base_sentences = [
+def build_sentences(num_records: int) -> list[str]:
+    base = (
         "Concurrency without a global interpreter lock enables true parallelism.",
         "Thread scheduling affects throughput and latency.",
         "Text processing stresses object allocation and reference counting.",
         "Deterministic workloads help compare runtimes fairly.",
-    ]
-    sentences: List[str] = []
-    for index in range(num_records):
-        template = base_sentences[index % len(base_sentences)]
-        sentences.append(f"{template} record-{index}")
-    return sentences
+    )
+    blen = len(base)
+
+    return [f"{base[idx % blen]} record-{idx}" for idx in range(num_records)]
+
 
 
 def tokenize_slice(start_index: int, end_index: int, sentences: List[str]) -> Counter:
-    """Tokenize a slice of sentences and return token frequency counts."""
+    """Tokenize a slice of sentences (lowercase + split) and return token frequency counts, skipping simple stopwords."""
     token_counts: Counter = Counter()
     for sentence in sentences[start_index:end_index]:
-        tokens = sentence.lower().split()
+        tokens = [tok for tok in sentence.lower().split() if tok not in STOPWORDS]
         token_counts.update(tokens)
     return token_counts
 
 
-def run_tokenize_benchmark(sentences: List[str], num_workers: int) -> int:
-    """Tokenize all sentences using a thread pool and return the total token count."""
+def run_tokenize_benchmark(sentences: List[str], num_workers: int) -> None:
+    """Tokenize all sentences using a thread pool."""
     counters: List[Counter] = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
         futures = [
@@ -60,8 +74,8 @@ def run_tokenize_benchmark(sentences: List[str], num_workers: int) -> int:
     merged = Counter()
     for counter in counters:
         merged.update(counter)
-
-    return sum(merged.values())
+    
+    return
 
 
 if __name__ == "__main__":
@@ -78,11 +92,12 @@ if __name__ == "__main__":
 
     set_output_filename(filename=f"text_tokenize_{num_workers}_{num_records}_{runtime_flavor}_{run_suffix}")
 
-    # Pre-build sentences; profiling should focus on tokenization, not data generation.
+    # Build sentences
     sentences = build_sentences(num_records)
+    time.sleep(3)
 
     set_tag("start_text_tokenize")
-    checksum = run_tokenize_benchmark(sentences=sentences, num_workers=num_workers)
+    run_tokenize_benchmark(sentences=sentences, num_workers=num_workers)
     set_tag("finish_text_tokenize")
 
-    print(f"checksum: {checksum}")
+    print("tokenization complete")
