@@ -5,6 +5,7 @@ Computes a matrix multiplication using NumPy/BLAS and returns a checksum.
 """
 
 import argparse
+import time
 import numpy as np
 
 from src.client_interface import set_output_filename, set_tag
@@ -19,10 +20,11 @@ def build_matrices(size: int) -> tuple[np.ndarray, np.ndarray]:
     return matrix_a, matrix_b
 
 
-def dot_checksum(matrix_a: np.ndarray, matrix_b: np.ndarray) -> float:
-    """Compute matrix product and return a checksum."""
+def run_blas_dot(matrix_a: np.ndarray, matrix_b: np.ndarray) -> None:
+    """Compute matrix product."""
     product = matrix_a.dot(matrix_b)
-    return float(product.sum())
+    product.sum()
+    return
 
 
 if __name__ == "__main__":
@@ -34,13 +36,12 @@ if __name__ == "__main__":
     size = args.size
     runtime_flavor = runtime_flavor_suffix()
     run_suffix = f"run{args.run_idx}" if args.run_idx else ""
-
     set_output_filename(filename=f"numpy_blas_{size}_{runtime_flavor}_{run_suffix}")
 
+    # Pre-build data
     matrix_a, matrix_b = build_matrices(size)
+    time.sleep(3)
 
     set_tag("start_numpy_blas")
-    checksum = dot_checksum(matrix_a=matrix_a, matrix_b=matrix_b)
+    run_blas_dot(matrix_a=matrix_a, matrix_b=matrix_b)
     set_tag("finish_numpy_blas")
-
-    print(f"checksum: {checksum}")

@@ -6,6 +6,7 @@ to keep the work observable.
 """
 
 import argparse
+import time
 from typing import List
 
 from src.client_interface import set_output_filename, set_tag
@@ -30,11 +31,6 @@ def bubble_sort(values: List[int]) -> None:
             break
 
 
-def checksum(values: List[int]) -> int:
-    """Compute a checksum for the list."""
-    return sum(values)
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Sequential bubble sort benchmark.")
     parser.add_argument("--num_items", type=int, default=20000, help="Number of items to sort.")
@@ -44,10 +40,11 @@ if __name__ == "__main__":
     num_items = args.num_items
     runtime_flavor = runtime_flavor_suffix()
     run_suffix = f"run{args.run_idx}" if args.run_idx else ""
-
     set_output_filename(filename=f"bubble_sort_{num_items}_{runtime_flavor}_{run_suffix}")
 
+    # Pre-build input before profiling to focus on sort work
     numbers = build_numbers(num_items)
+    time.sleep(3)
 
     set_tag("start_bubble_sort")
     bubble_sort(numbers)

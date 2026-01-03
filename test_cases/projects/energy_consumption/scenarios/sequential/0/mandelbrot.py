@@ -6,32 +6,35 @@ iteration cap, deterministic region, and checksum of iteration counts.
 """
 
 import argparse
+import time
 
 from src.client_interface import set_output_filename, set_tag
 from test_cases.util import runtime_flavor_suffix
 
 MAX_ITERATIONS = 50
+DEFAULT_BOUNDS = (-1.5, 0.5, -1.0, 1.0)
 
 
-def mandelbrot_checksum(size: int) -> int:
-    """Compute the Mandelbrot set for an (size x size) grid and return a checksum."""
-    x_min, x_max = -1.5, 0.5
-    y_min, y_max = -1.0, 1.0
+def build_grid(size: int, bounds: tuple[float, float, float, float] = DEFAULT_BOUNDS) -> tuple[list[float], list[float]]:
+    """Precompute x/y coordinates for the Mandelbrot grid."""
+    x_min, x_max, y_min, y_max = bounds
     dx = (x_max - x_min) / size
     dy = (y_max - y_min) / size
+    x_coords = [x_min + col * dx for col in range(size)]
+    y_coords = [y_min + row * dy for row in range(size)]
+    return x_coords, y_coords
 
-    checksum = 0
-    for row in range(size):
-        imag = y_min + row * dy
-        for col in range(size):
-            real = x_min + col * dx
+
+def run_mandelbrot(x_coords: list[float], y_coords: list[float]) -> None:
+    """Compute the Mandelbrot iteration counts across the provided grid."""
+    for imag in y_coords:
+        for real in x_coords:
             zr = zi = 0.0
             iteration = 0
             while zr * zr + zi * zi <= 4.0 and iteration < MAX_ITERATIONS:
                 zr, zi = zr * zr - zi * zi + real, 2.0 * zr * zi + imag
                 iteration += 1
-            checksum += iteration
-    return checksum
+    return
 
 
 if __name__ == "__main__":
@@ -43,11 +46,12 @@ if __name__ == "__main__":
     size = args.size
     runtime_flavor = runtime_flavor_suffix()
     run_suffix = f"run{args.run_idx}" if args.run_idx else ""
-
     set_output_filename(filename=f"mandelbrot_{size}_{runtime_flavor}_{run_suffix}")
 
-    set_tag("start_mandelbrot")
-    checksum = mandelbrot_checksum(size=size)
-    set_tag("finish_mandelbrot")
+    # Precompute coordinates before profiling to focus on iteration work
+    x_coords, y_coords = build_grid(size)
+    time.sleep(3)
 
-    print(f"checksum: {checksum}")
+    set_tag("start_mandelbrot")
+    run_mandelbrot(x_coords=x_coords, y_coords=y_coords)
+    set_tag("finish_mandelbrot")

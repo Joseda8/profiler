@@ -5,6 +5,7 @@ Uses the Sieve of Eratosthenes to count primes up to a limit.
 """
 
 import argparse
+import time
 from typing import List
 
 from src.client_interface import set_output_filename, set_tag
@@ -38,10 +39,8 @@ if __name__ == "__main__":
 
     set_output_filename(filename=f"prime_sieve_{limit}_{runtime_flavor}_{run_suffix}")
 
+    time.sleep(3)
+
     set_tag("start_prime_sieve")
     primes = sieve(limit)
-    prime_count = len(primes)
-    primes_checksum = sum(primes)
     set_tag("finish_prime_sieve")
-
-    print(f"primes: {prime_count}, checksum: {primes_checksum}")

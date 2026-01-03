@@ -6,6 +6,7 @@ native-extension performance.
 """
 
 import argparse
+import time
 import numpy as np
 
 from src.client_interface import set_output_filename, set_tag
@@ -20,12 +21,13 @@ def build_arrays(length: int) -> tuple[np.ndarray, np.ndarray]:
     return array_a, array_b
 
 
-def vectorized_work(array_a: np.ndarray, array_b: np.ndarray) -> float:
-    """Run chained vectorized ops and return a checksum."""
+def vectorized_work(array_a: np.ndarray, array_b: np.ndarray) -> None:
+    """Run chained vectorized ops."""
     combined = array_a * array_b + array_a * 0.5 - array_b * 0.25
     clipped = np.clip(combined, 0.0, 1.0)
     normalized = (clipped - clipped.mean()) / (clipped.std() + 1e-9)
-    return float(np.sum(normalized))
+    normalized.sum()
+    return
 
 
 if __name__ == "__main__":
@@ -37,13 +39,12 @@ if __name__ == "__main__":
     length = args.length
     runtime_flavor = runtime_flavor_suffix()
     run_suffix = f"run{args.run_idx}" if args.run_idx else ""
-
     set_output_filename(filename=f"numpy_vectorized_{length}_{runtime_flavor}_{run_suffix}")
 
+    # Pre build arrays
     array_a, array_b = build_arrays(length)
+    time.sleep(3)
 
     set_tag("start_numpy_vectorized")
-    checksum = vectorized_work(array_a=array_a, array_b=array_b)
+    vectorized_work(array_a=array_a, array_b=array_b)
     set_tag("finish_numpy_vectorized")
-
-    print(f"checksum: {checksum}")
