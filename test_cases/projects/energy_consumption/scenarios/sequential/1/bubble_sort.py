@@ -1,8 +1,7 @@
 """
 Sequential bubble sort benchmark for energy consumption tests.
 
-Generates a deterministic list and performs bubble sort, returning a checksum
-to keep the work observable.
+Generates a deterministic list and performs bubble sort.
 """
 
 import argparse

@@ -36,7 +36,7 @@ if __name__ == "__main__":
     run_suffix = f"run{args.run_idx}" if args.run_idx else ""
     set_output_filename(filename=f"numpy_fft_{length}_{runtime_flavor}_{run_suffix}")
 
-    # Pre-build data
+    # Pre-build data before profiling to keep measurement focused on FFT
     signal = build_signal(length)
     time.sleep(3)
 

@@ -57,7 +57,7 @@ def process_people_slice(start_index: int, end_index: int, people: List[Person])
     Transform a slice of people:
     - Duplicate active users with an incremented age.
     - Build display names.
-    - Apply extra list churn (copies, reversals, pops, concatenations) to stress list behavior.
+    - Apply extra list churn (copies, concatenations, slice merges) to stress list behavior.
     """
     # Collect original and duplicated records for this slice
     processed: List[Person] = []
@@ -75,7 +75,6 @@ def process_people_slice(start_index: int, end_index: int, people: List[Person])
             processed.append(duplicated)
 
     # List-heavy operations
-
     # Build a separate list of names to copy via list comprehension
     names = [f"{p.first_name} {p.last_name}" for p in processed]
 

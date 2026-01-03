@@ -38,7 +38,7 @@ if __name__ == "__main__":
     run_suffix = f"run{args.run_idx}" if args.run_idx else ""
     set_output_filename(filename=f"factorial_{num_workers}_{runtime_flavor}_{run_suffix}")
 
-    # Pre-build payloads
+    # Pre-build inputs before profiling
     factorial_inputs = list(range(max_value + 1))
     time.sleep(3)
 

@@ -71,7 +71,7 @@ def parse_slice(start_index: int, end_index: int, payloads: List[str]) -> None:
     return
 
 
-def run_parse_benchmark(payloads: List[str], num_workers: int) -> int:
+def run_parse_benchmark(payloads: List[str], num_workers: int) -> None:
     """Parse a shared payload list in parallel."""
     num_records = len(payloads)
     with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
@@ -86,7 +86,7 @@ def run_parse_benchmark(payloads: List[str], num_workers: int) -> int:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="JSON parsing and aggregation benchmark.")
+    parser = argparse.ArgumentParser(description="JSON parsing benchmark.")
     parser.add_argument("--num_workers", required=True, type=int, help="Number of worker threads.")
     parser.add_argument("--num_records", type=int, default=50000, help="Number of JSON records to parse.")
     parser.add_argument("--run_idx", help="Optional run index to tag outputs.")

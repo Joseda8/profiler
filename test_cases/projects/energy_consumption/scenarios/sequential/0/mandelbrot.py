@@ -2,7 +2,7 @@
 Sequential Mandelbrot benchmark for energy consumption tests.
 
 Mimics the classic benchmark game implementation: single size parameter, fixed
-iteration cap, deterministic region, and checksum of iteration counts.
+iteration cap, deterministic region, and iteration counting per pixel.
 """
 
 import argparse

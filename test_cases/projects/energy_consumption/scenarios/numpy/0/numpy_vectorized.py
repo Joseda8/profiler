@@ -41,7 +41,7 @@ if __name__ == "__main__":
     run_suffix = f"run{args.run_idx}" if args.run_idx else ""
     set_output_filename(filename=f"numpy_vectorized_{length}_{runtime_flavor}_{run_suffix}")
 
-    # Pre build arrays
+    # Pre-build arrays before profiling to keep measurement focused on vector ops
     array_a, array_b = build_arrays(length)
     time.sleep(3)
 
