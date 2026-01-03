@@ -13,13 +13,13 @@ workers=(1 2 4 8 12)
 
 # Factorial
 for w in "${workers[@]}"; do
-  python3 -m src.main --file_to_run test_cases.projects.energy_consumption.scenarios.threads_numerical.0.factorial --is_module --script_args --num_workers "$w" --run_idx "$RUN_ID"
+  python3 -m src.main --file_to_run test_cases.projects.energy_consumption.scenarios.threads_numerical.0.factorial --is_module --script_args --num_workers "$w" --max_value 10000 --run_idx "$RUN_ID"
   sleep 1
 done
 
 # Matmul
 for w in "${workers[@]}"; do
-  python3 -m src.main --file_to_run test_cases.projects.energy_consumption.scenarios.threads_numerical.1.matmul --is_module --script_args --matrix_size 512 --num_workers "$w" --run_idx "$RUN_ID"
+  python3 -m src.main --file_to_run test_cases.projects.energy_consumption.scenarios.threads_numerical.1.matmul --is_module --script_args --matrix_size 768 --num_workers "$w" --run_idx "$RUN_ID"
   sleep 1
 done
 

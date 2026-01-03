@@ -5,6 +5,7 @@ Threaded N-body benchmark for energy consumption tests.
 import argparse
 import concurrent.futures
 import math
+import time
 from typing import Iterable, List, Tuple
 
 from src.client_interface import set_output_filename, set_tag
@@ -49,14 +50,7 @@ def seed_velocities(num_particles: int) -> List[Vector]:
     return velocities
 
 
-def compute_step_for_slice(
-    start_index: int,
-    end_index: int,
-    positions: List[Vector],
-    velocities: List[Vector],
-    delta_t: float,
-    softening: float,
-) -> Tuple[List[Vector], List[Vector]]:
+def compute_step_for_slice(start_index: int, end_index: int, positions: List[Vector], velocities: List[Vector], delta_t: float, softening: float) -> Tuple[List[Vector], List[Vector]]:
     """Compute updated positions and velocities for a slice of particles."""
     num_particles = len(positions)
     updated_positions: List[Vector] = []
@@ -109,29 +103,14 @@ def aggregate_slices(slices: List[Tuple[int, List[Vector], List[Vector]]], total
     return positions, velocities
 
 
-def compute_checksum(positions: List[Vector], velocities: List[Vector]) -> float:
-    """Compute a simple checksum to prevent optimizations from removing work."""
-    return sum(px + py + pz + vx + vy + vz for (px, py, pz), (vx, vy, vz) in zip(positions, velocities))
-
-
-def run_nbody(num_particles: int, num_steps: int, num_workers: int, delta_t: float = 0.01, softening: float = 1e-9) -> float:
-    """Run a naive O(N^2) N-body simulation for a fixed number of steps and return a checksum."""
-    positions = seed_positions(num_particles)
-    velocities = seed_velocities(num_particles)
-
+def run_nbody(positions: List[Vector], velocities: List[Vector], num_steps: int, num_workers: int, delta_t: float = 0.01, softening: float = 1e-9) -> None:
+    """Run a naive O(N^2) N-body simulation for a fixed number of steps."""
+    num_particles = len(positions)
     for _ in range(num_steps):
         slices: List[Tuple[int, List[Vector], List[Vector]]] = []
         with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
             future_slices = {
-                executor.submit(
-                    compute_step_for_slice,
-                    start_index,
-                    end_index,
-                    positions,
-                    velocities,
-                    delta_t,
-                    softening,
-                ): start_index
+                executor.submit(compute_step_for_slice, start_index, end_index, positions, velocities, delta_t, softening): start_index
                 for start_index, end_index in chunk_indices(num_particles, num_workers)
             }
             for future in concurrent.futures.as_completed(future_slices):
@@ -141,7 +120,7 @@ def run_nbody(num_particles: int, num_steps: int, num_workers: int, delta_t: flo
 
         positions, velocities = aggregate_slices(slices, num_particles)
 
-    return compute_checksum(positions, velocities)
+    return
 
 
 if __name__ == "__main__":
@@ -157,11 +136,13 @@ if __name__ == "__main__":
     num_steps = args.num_steps
     runtime_flavor = runtime_flavor_suffix()
     run_suffix = f"run{args.run_idx}" if args.run_idx else ""
-
     set_output_filename(filename=f"nbody_{num_workers}_{num_particles}_{num_steps}_{runtime_flavor}_{run_suffix}")
 
-    set_tag("start_nbody")
-    checksum = run_nbody(num_particles=num_particles, num_steps=num_steps, num_workers=num_workers)
-    set_tag("finish_nbody")
+    # Build initial state before profiling to keep measurement focused on simulation
+    positions = seed_positions(num_particles)
+    velocities = seed_velocities(num_particles)
+    time.sleep(3)
 
-    print(f"checksum: {checksum}")
+    set_tag("start_nbody")
+    run_nbody(positions=positions, velocities=velocities, num_steps=num_steps, num_workers=num_workers)
+    set_tag("finish_nbody")
