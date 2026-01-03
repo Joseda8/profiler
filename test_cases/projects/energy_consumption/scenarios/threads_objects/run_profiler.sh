@@ -9,7 +9,7 @@ else
   echo "Running Threaded Objects scenarios"
 fi
 
-workers=(1 2 4 8 12)
+workers=(1 2 4 6 8 12)
 
 # JSON parse
 for w in "${workers[@]}"; do

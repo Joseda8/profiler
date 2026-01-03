@@ -9,7 +9,7 @@ else
   echo "Running Threaded Numerical scenarios"
 fi
 
-workers=(1 2 4 8 12)
+workers=(1 2 4 6 8 12)
 
 # Factorial
 for w in "${workers[@]}"; do
