@@ -1,8 +1,10 @@
 """
 Threaded object/list manipulation benchmark for energy consumption tests.
 
-Creates simple Person instances, duplicates active ones, and builds display
-names to stress Python object handling and list operations.
+Benchmark Steps:
+1. Build deterministic Person objects.
+2. Sleep briefly to isolate setup.
+3. Transform slices across threads with duplicates and list churn.
 """
 
 import argparse

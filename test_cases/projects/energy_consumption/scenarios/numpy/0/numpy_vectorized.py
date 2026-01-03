@@ -1,8 +1,10 @@
 """
 NumPy vectorized benchmark for energy consumption tests.
 
-Performs chained vectorized operations on prebuilt arrays to compare GIL vs
-native-extension performance.
+Benchmark Steps:
+1. Build deterministic input arrays.
+2. Sleep briefly to isolate setup.
+3. Run chained vectorized math and normalization.
 """
 
 import argparse

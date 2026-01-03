@@ -1,7 +1,10 @@
 """
 Sequential prime sieve benchmark for energy consumption tests.
 
-Uses the Sieve of Eratosthenes to count primes up to a limit.
+Benchmark Steps:
+1. Parse limit and set output tag.
+2. Sleep briefly to isolate setup.
+3. Run Sieve of Eratosthenes to list primes.
 """
 
 import argparse

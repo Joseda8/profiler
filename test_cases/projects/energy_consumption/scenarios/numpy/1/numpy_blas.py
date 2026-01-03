@@ -1,7 +1,10 @@
 """
 NumPy BLAS (dot product) benchmark for energy consumption tests.
 
-Computes a matrix multiplication using NumPy/BLAS.
+Benchmark Steps:
+1. Build deterministic square matrices.
+2. Sleep briefly to isolate setup.
+3. Multiply matrices and reduce to keep work materialized.
 """
 
 import argparse

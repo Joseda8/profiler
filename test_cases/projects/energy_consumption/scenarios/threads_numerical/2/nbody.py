@@ -1,5 +1,10 @@
 """
 Threaded N-body benchmark for energy consumption tests.
+
+Benchmark Steps:
+1. Seed deterministic positions and velocities.
+2. Sleep briefly to isolate setup.
+3. Simulate N-body steps across a thread pool.
 """
 
 import argparse

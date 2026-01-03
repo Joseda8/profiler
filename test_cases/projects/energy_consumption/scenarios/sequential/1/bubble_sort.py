@@ -1,7 +1,10 @@
 """
 Sequential bubble sort benchmark for energy consumption tests.
 
-Generates a deterministic list and performs bubble sort.
+Benchmark Steps:
+1. Build a deterministic descending list.
+2. Sleep briefly to isolate setup.
+3. Run in-place bubble sort with early-exit.
 """
 
 import argparse

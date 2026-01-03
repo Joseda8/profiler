@@ -1,5 +1,10 @@
 """
 Threaded matrix multiplication benchmark for energy consumption tests.
+
+Benchmark Steps:
+1. Build deterministic integer matrices (and transpose rhs).
+2. Sleep briefly to isolate setup.
+3. Multiply row blocks across a thread pool.
 """
 
 import argparse

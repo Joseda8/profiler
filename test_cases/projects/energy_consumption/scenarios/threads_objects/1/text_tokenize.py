@@ -1,5 +1,10 @@
 """
 Threaded text tokenization benchmark for energy consumption tests.
+
+Benchmark Steps:
+1. Build synthetic sentences.
+2. Sleep briefly to isolate setup.
+3. Tokenize sentences across a thread pool and merge counts.
 """
 
 import argparse

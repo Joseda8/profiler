@@ -1,5 +1,10 @@
 """
 Threaded JSON parsing benchmark for energy consumption tests.
+
+Benchmark Steps:
+1. Build synthetic JSON payloads.
+2. Sleep briefly to isolate setup.
+3. Parse payload slices across a thread pool.
 """
 
 import argparse

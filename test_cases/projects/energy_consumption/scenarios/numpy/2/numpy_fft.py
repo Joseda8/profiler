@@ -1,7 +1,10 @@
 """
 NumPy FFT benchmark for energy consumption tests.
 
-Computes a 1D FFT on a prebuilt array.
+Benchmark Steps:
+1. Build a deterministic input signal.
+2. Sleep briefly to isolate setup.
+3. Compute FFT and reduce the spectrum.
 """
 
 import argparse

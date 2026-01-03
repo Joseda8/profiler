@@ -1,8 +1,10 @@
 """
 Sequential Mandelbrot benchmark for energy consumption tests.
 
-Mimics the classic benchmark game implementation: single size parameter, fixed
-iteration cap, deterministic region, and iteration counting per pixel.
+Benchmark Steps:
+1. Precompute grid coordinates for a fixed region.
+2. Sleep briefly to isolate setup.
+3. Iterate Mandelbrot counts across the grid.
 """
 
 import argparse

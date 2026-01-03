@@ -1,5 +1,10 @@
 """
 Threaded factorial benchmark for energy consumption tests.
+
+Benchmark Steps:
+1. Build factorial input range.
+2. Sleep briefly to isolate setup.
+3. Compute factorials across a thread pool.
 """
 
 import argparse
