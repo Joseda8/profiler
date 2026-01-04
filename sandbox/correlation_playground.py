@@ -14,7 +14,7 @@ def main():
     df = pd.read_csv(csv_path)
 
     # Select numeric columns for correlation
-    numeric_cols = ["uptime", "cpu_usage", "energy_max", "vms", "ram", "cores_disparity"]
+    numeric_cols = ["uptime", "cpu_usage", "energy_delta", "power_avg", "vms", "ram", "cores_disparity"]
     df_numeric = df[numeric_cols].apply(pd.to_numeric, errors="coerce")
 
     corr_pearson = df_numeric.corr(method="pearson")

@@ -72,7 +72,9 @@ def _aggregate_file_row(file_stats: FileStats, task_label: str, start_label: str
         # std dev for CVs
         cpu_usage_std, vms_std, ram_std = file_stats.get_std_between_labels(start_label=start_label, finish_label=finish_label)
         # peak energy within window
-        *_, energy_max = file_stats.get_min_max_memory_stats(start_label=start_label, finish_label=finish_label)
+        *_, energy_min, energy_max = file_stats.get_min_max_memory_stats(start_label=start_label, finish_label=finish_label)
+        energy_delta = energy_max - energy_min
+        power_avg = (energy_delta / uptime) if uptime else None
         # imbalance across cores
         *_ignored, cores_disparity_avg = file_stats.track_dominant_core_changes_between_labels(start_label=start_label, finish_label=finish_label)
     except Exception as exc:
@@ -84,7 +86,8 @@ def _aggregate_file_row(file_stats: FileStats, task_label: str, start_label: str
         run_id,
         uptime,
         cpu_usage, _cv(cpu_usage_std, cpu_usage),
-        energy_max,
+        energy_delta,
+        power_avg,
         vms, _cv(vms_std, vms),
         ram, _cv(ram_std, ram),
         cores_disparity_avg,
@@ -97,13 +100,16 @@ def _generate_run_plots(output_path: str, run_root: str, variant_column: str) ->
     plotter = DataPlotter(path_file_stats=output_path, folder_results=graphs_dir, group_by="flavor")
 
     # Basic relationships per run
-    plotter.plot_lines(x_column="uptime", y_columns=["energy_max"], title="Energy vs Uptime", annotate_variant=True, variant_column=variant_column)
+    plotter.plot_lines(x_column="uptime", y_columns=["energy_delta"], title="Energy vs Uptime", annotate_variant=True, variant_column=variant_column)
+    plotter.plot_lines(x_column="uptime", y_columns=["power_avg"], title="Power vs Uptime", annotate_variant=True, variant_column=variant_column)
     plotter.plot_lines(x_column="uptime", y_columns=["cpu_usage"], title="CPU Usage vs Uptime", annotate_variant=True, variant_column=variant_column)
-    plotter.plot_lines(x_column="cpu_usage", y_columns=["energy_max"], title="Energy vs CPU Usage", annotate_variant=True, variant_column=variant_column)
+    plotter.plot_lines(x_column="cpu_usage", y_columns=["energy_delta"], title="Energy vs CPU Usage", annotate_variant=True, variant_column=variant_column)
+    plotter.plot_lines(x_column="cpu_usage", y_columns=["power_avg"], title="Power vs CPU Usage", annotate_variant=True, variant_column=variant_column)
 
     # Variant-based views when available
     if variant_column in plotter.stats_columns:
-        plotter.plot_lines(x_column=variant_column, y_columns=["energy_max"], title="Energy vs Variant")
+        plotter.plot_lines(x_column=variant_column, y_columns=["energy_delta"], title="Energy vs Variant")
+        plotter.plot_lines(x_column=variant_column, y_columns=["power_avg"], title="Power vs Variant")
         plotter.plot_lines(x_column=variant_column, y_columns=["cpu_usage"], title="CPU Usage vs Variant")
         plotter.plot_lines(x_column=variant_column, y_columns=["vms"], title="VMS vs Variant")
         plotter.plot_lines(x_column=variant_column, y_columns=["ram"], title="RAM vs Variant")
@@ -125,7 +131,7 @@ def stage_aggregate(files_stats: List[FileStats], output_path: str, task_label: 
     run_root = _run_root_from_output_path(output_path)
 
     # Define output schema and build rows for each input stats file
-    columns = [variant_column, "flavor", "run_id", "uptime", "cpu_usage", "cpu_usage_cv", "energy_max", "vms", "vms_cv", "ram", "ram_cv", "cores_disparity"]
+    columns = [variant_column, "flavor", "run_id", "uptime", "cpu_usage", "cpu_usage_cv", "energy_delta", "power_avg", "vms", "vms_cv", "ram", "ram_cv", "cores_disparity"]
     rows = [
         _aggregate_file_row(file_stats=file_stats, task_label=task_label, start_label=start_label, finish_label=finish_label, variant_regex=variant_regex, run_id=run_id)
         for file_stats in files_stats
@@ -163,7 +169,7 @@ def _write_normalized(df: pd.DataFrame, output_path: str, variant_column: str, n
     norm_dir = os.path.join(processed_root, NORMALIZED_DIRNAME)
     os.makedirs(norm_dir, exist_ok=True)
     base_name = os.path.basename(output_path)
-    energy_col = "energy_max"
+    energy_col = "energy_delta"
 
     # force numeric and stabilize zeros
     numeric_metrics = df_norm[metric_cols].apply(pd.to_numeric, errors="coerce").fillna(0.1).replace(0, 0.1)
@@ -188,7 +194,7 @@ def _write_normalized(df: pd.DataFrame, output_path: str, variant_column: str, n
 
 def _compute_per_run_ratios(df: pd.DataFrame, variant_column: str) -> pd.DataFrame:
     # Build a row per (run_id, variant) with nogil/gil ratios, diffs, and logs
-    metric_columns = [col for col in ["uptime", "cpu_usage", "energy_max", "vms", "ram", "cores_disparity"] if col in df.columns]
+    metric_columns = [col for col in ["uptime", "cpu_usage", "energy_delta", "power_avg", "vms", "ram", "cores_disparity"] if col in df.columns]
 
     rows = []
     for (run_id, variant_value), group in df.groupby(["run_id", variant_column]):
@@ -261,7 +267,7 @@ def _write_ratio_outputs(df_combined: pd.DataFrame, variant_column: str, base_na
     # drop log helpers for CSV
     ratio_cols = [col for col in per_run.columns if not col.endswith("_log_ratio_nogil_over_gil")]
     ratios_clean = per_run[ratio_cols].sort_values(by=[variant_column, "run_id"]).reset_index(drop=True)
-    metric_names = ["uptime", "cpu_usage", "energy_max", "vms", "ram", "cores_disparity"]
+    metric_names = ["uptime", "cpu_usage", "energy_delta", "power_avg", "vms", "ram", "cores_disparity"]
     ordered_cols = [variant_column, "run_id"]
     for metric in metric_names:
         ratio_col = f"{metric}_ratio_nogil_over_gil"
@@ -283,7 +289,7 @@ def _write_ratio_outputs(df_combined: pd.DataFrame, variant_column: str, base_na
     )
 
     ratio_confidence = _compute_ratio_confidence(per_run_ratios=per_run, variant_column=variant_column)
-    metric_order = ["uptime", "cpu_usage", "energy_max", "vms", "ram", "cores_disparity"]
+    metric_order = ["uptime", "cpu_usage", "energy_delta", "power_avg", "vms", "ram", "cores_disparity"]
     ratio_confidence["metric"] = pd.Categorical(ratio_confidence["metric"], categories=metric_order, ordered=True)
     ratio_confidence.sort_values(by=[variant_column, "metric"]).reset_index(drop=True).to_csv(
         os.path.join(ratios_dir, f"{os.path.splitext(base_name)[0]}_ratio_confidence.csv"),
@@ -301,9 +307,12 @@ def _plot_combined_graphs(summary_path: str, variant_column: str, global_root: s
     # CPU and energy views across uptime/variant dimensions
     plotter.plot_lines(x_column="uptime", y_columns=["cpu_usage"], title="CPU Usage vs Uptime (runs)", annotate_variant=True, variant_column=variant_column)
     plotter.plot_lines(x_column=variant_column, y_columns=["cpu_usage"], title="CPU Usage vs Variant (runs)")
-    plotter.plot_lines(x_column="cpu_usage", y_columns=["energy_max"], title="Energy vs CPU Usage (runs)", annotate_variant=True, variant_column=variant_column)
-    plotter.plot_lines(x_column="uptime", y_columns=["energy_max"], title="Energy vs Uptime (runs)", annotate_variant=True, variant_column=variant_column)
-    plotter.plot_lines(x_column=variant_column, y_columns=["energy_max"], title="Energy vs Variant (runs)")
+    plotter.plot_lines(x_column="cpu_usage", y_columns=["energy_delta"], title="Energy vs CPU Usage (runs)", annotate_variant=True, variant_column=variant_column)
+    plotter.plot_lines(x_column="cpu_usage", y_columns=["power_avg"], title="Power vs CPU Usage (runs)", annotate_variant=True, variant_column=variant_column)
+    plotter.plot_lines(x_column="uptime", y_columns=["energy_delta"], title="Energy vs Uptime (runs)", annotate_variant=True, variant_column=variant_column)
+    plotter.plot_lines(x_column="uptime", y_columns=["power_avg"], title="Power vs Uptime (runs)", annotate_variant=True, variant_column=variant_column)
+    plotter.plot_lines(x_column=variant_column, y_columns=["energy_delta"], title="Energy vs Variant (runs)")
+    plotter.plot_lines(x_column=variant_column, y_columns=["power_avg"], title="Power vs Variant (runs)")
     plotter.plot_lines(x_column=variant_column, y_columns=["vms"], title="VMS vs Variant (runs)")
     plotter.plot_lines(x_column=variant_column, y_columns=["ram"], title="RAM vs Variant (runs)")
 

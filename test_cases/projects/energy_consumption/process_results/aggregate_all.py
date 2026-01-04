@@ -51,7 +51,8 @@ def collect_rows(pattern: str) -> List[Dict]:
                                 "variant_value": row.get(variant_col, ""),
                                 "uptime": row.get("uptime", ""),
                                 "cpu_usage": row.get("cpu_usage", ""),
-                                "energy_max": row.get("energy_max", ""),
+                                "energy_delta": row.get("energy_delta", ""),
+                                "power_avg": row.get("power_avg", ""),
                                 "vms": row.get("vms", ""),
                                 "ram": row.get("ram", ""),
                                 "cores_disparity": row.get("cores_disparity", ""),
@@ -103,7 +104,8 @@ def write_output(rows: List[Dict], output_path: str) -> None:
             "variant_value",
             "uptime",
             "cpu_usage",
-            "energy_max",
+            "energy_delta",
+            "power_avg",
             "vms",
             "ram",
             "cores_disparity",
@@ -118,7 +120,8 @@ def write_output(rows: List[Dict], output_path: str) -> None:
                 row["variant_value"],
                 row["uptime"],
                 row["cpu_usage"],
-                row["energy_max"],
+                row["energy_delta"],
+                row["power_avg"],
                 row["vms"],
                 row["ram"],
                 row["cores_disparity"],
@@ -145,9 +148,10 @@ def _generate_plots(df: pd.DataFrame, output_path: str) -> None:
         return str(val)
 
     # Ensure numeric types where needed
-    for col in ["uptime", "cpu_usage", "energy_max", "vms", "ram", "cores_disparity", "variant_value"]:
-        df[col] = pd.to_numeric(df[col], errors="coerce")
-    df = df.dropna(subset=["uptime", "cpu_usage", "energy_max", "vms", "ram", "cores_disparity"])
+    for col in ["uptime", "cpu_usage", "energy_delta", "power_avg", "vms", "ram", "cores_disparity", "variant_value"]:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+    df = df.dropna(subset=["uptime", "cpu_usage", "energy_delta", "vms", "ram", "cores_disparity"])
 
     output_dir = os.path.join(os.path.dirname(output_path), "graphs_all")
     os.makedirs(output_dir, exist_ok=True)
@@ -167,10 +171,27 @@ def _generate_plots(df: pd.DataFrame, output_path: str) -> None:
         save(filename)
 
     # Global (scenario-agnostic) scatter plots
-    scatter_all("uptime", "energy_max", "Energy vs Uptime (All)", "energy_vs_uptime_all.png")
+    scatter_all("uptime", "energy_delta", "Energy vs Uptime (All)", "energy_vs_uptime_all.png")
     scatter_all("cpu_usage", "cores_disparity", "CPU Usage vs Cores Disparity (All)", "cpu_usage_vs_cores_disparity_all.png")
     scatter_all("cpu_usage", "uptime", "CPU Usage vs Uptime (All)", "cpu_usage_vs_uptime_all.png")
-    scatter_all("cpu_usage", "energy_max", "Energy vs CPU Usage (All)", "energy_vs_cpu_usage_all.png")
+    scatter_all("cpu_usage", "energy_delta", "Energy vs CPU Usage (All)", "energy_vs_cpu_usage_all.png")
+    if "power_avg" in df.columns and df["power_avg"].notna().any():
+        df_power = df.dropna(subset=["power_avg"])
+        plt.figure(figsize=(10, 7))
+        plt.scatter(df_power["cpu_usage"], df_power["power_avg"], alpha=0.7)
+        plt.xlabel("cpu_usage")
+        plt.ylabel("power_avg")
+        plt.title("Power vs CPU Usage (All)")
+        plt.grid(True)
+        save("power_vs_cpu_usage_all.png")
+
+        plt.figure(figsize=(10, 7))
+        plt.scatter(df_power["uptime"], df_power["power_avg"], alpha=0.7)
+        plt.xlabel("uptime")
+        plt.ylabel("power_avg")
+        plt.title("Power vs Uptime (All)")
+        plt.grid(True)
+        save("power_vs_uptime_all.png")
     scatter_all("vms", "ram", "VMS vs RAM (All)", "vms_vs_ram_all.png")
 
 
