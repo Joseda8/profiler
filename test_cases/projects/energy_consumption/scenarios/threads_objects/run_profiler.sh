@@ -19,7 +19,7 @@ done
 
 # Text tokenize
 for w in "${workers[@]}"; do
-  python3 -m src.main --file_to_run test_cases.projects.energy_consumption.scenarios.threads_objects.1.text_tokenize --is_module --script_args --num_records 3000000 --num_workers "$w" --run_idx "$RUN_ID"
+  python3 -m src.main --file_to_run test_cases.projects.energy_consumption.scenarios.threads_objects.1.object_lists_nocopy --is_module --script_args --num_records 50000000 --num_workers "$w" --run_idx "$RUN_ID"
   sleep 5
 done
 
