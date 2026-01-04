@@ -83,9 +83,6 @@ def process_people_slice(start_index: int, end_index: int, people: List[Person])
     # Concatenate list with its first half
     processed = processed + processed[: len(processed) // 2]
 
-    # Rebuild list by merging even/odd slices (copy + concat)
-    processed = processed[::2] + processed[1::2]
-
     # In-place slice assignment to exercise mutation
     processed[: len(names)] = processed[: len(names)]
 

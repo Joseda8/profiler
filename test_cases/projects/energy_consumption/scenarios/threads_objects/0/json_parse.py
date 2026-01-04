@@ -4,7 +4,7 @@ Threaded JSON parsing benchmark for energy consumption tests.
 Benchmark Steps:
 1. Build synthetic JSON payloads.
 2. Sleep briefly to isolate setup.
-3. Parse payload slices across a thread pool.
+3. Parse payload slices across a thread pool and do aggregations.
 """
 
 import argparse
@@ -51,12 +51,17 @@ def build_payloads(num_records: int) -> List[str]:
 
 def parse_slice(start_index: int, end_index: int, payloads: List[str]) -> None:
     """
-    Parse a slice of JSON payloads and exercise dict-heavy access/mutation:
-    - nested reads for ages/scores/tags
-    - dict merges and updates
-    - JSON round-trips on derived dicts
+    Parse a slice of JSON payloads and do straightforward bookkeeping:
+    - bucket counts by age decade
+    - total score accumulation
+    - per-tag counts
+    - checksum field added
     """
+    # Accumulators
     age_buckets: dict[int, int] = {}
+    tag_counts: dict[str, int] = {}
+    total_scores = {"math": 0.0, "lang": 0.0}
+
     for payload in payloads[start_index:end_index]:
         record = json.loads(payload)
         age = int(record.get("dob", {}).get("age", 0))
@@ -64,15 +69,31 @@ def parse_slice(start_index: int, end_index: int, payloads: List[str]) -> None:
         scores = record.get("scores", {})
         meta = record.get("meta", {}).copy()
 
-        meta["age_bucket"] = age // 10
-        meta["tag_count"] = len(tags)
-        age_buckets[meta["age_bucket"]] = age_buckets.get(meta["age_bucket"], 0) + 1
+        # Bucket by age decade
+        bucket = age // 10
+        age_buckets[bucket] = age_buckets.get(bucket, 0) + 1
 
-        merged = {**scores, "age": age, "active": record.get("active", False), **meta}
-        merged.setdefault("checksum", record["id"] ^ age)
+        # Count tags
+        for tag in tags:
+            tag_counts[tag] = tag_counts.get(tag, 0) + 1
 
-        # Round-trip derived dict to JSON to stress encode/decode paths
-        json.loads(json.dumps(merged))
+        # Sum scores
+        total_scores["math"] += float(scores.get("math", 0.0))
+        total_scores["lang"] += float(scores.get("lang", 0.0))
+
+        # Add a checksum to exercise light dict mutation
+        record.setdefault("checksum", record.get("id", 0) ^ age)
+
+        # Round-trip a small derived view to JSON to keep encode/decode in play
+        summary = {
+            "id": record.get("id", 0),
+            "age": age,
+            "active": record.get("active", False),
+            "age_bucket": bucket,
+            "tag_count": len(tags),
+        }
+        json.loads(json.dumps(summary))
+
     return
 
 
