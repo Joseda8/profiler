@@ -22,6 +22,15 @@ class EnergyStatsCollector:
         self._energy_fd = self._open_energy_file(energy_file)
         self._psys_max_energy_uj = self._read_int_file(max_energy_file)
 
+    def close(self) -> None:
+        """
+        Close the energy file descriptor.
+        """
+        try:
+            self._energy_fd.close()
+        except Exception:
+            pass
+
     @staticmethod
     def _read_int_file(path: Path) -> int:
         """
@@ -85,19 +94,35 @@ class EnergyStatsCollector:
         self._energy_fd.seek(0)
         return int(self._energy_fd.read().strip())
 
-    def read_energy(self) -> float:
+    def read_energy(self) -> int:
         """
         Read the current PSys energy value.
 
         Returns:
-            float: Energy in Joules (µJ).
+            int: Cumulative energy in microjoules (µJ).
         """
         return self._read_energy_uj()
 
+    def energy_delta_uj(self, start_energy_uj: int, end_energy_uj: int) -> int:
+        """
+        Compute the energy delta between two readings, handling wraparound.
+
+        Args:
+            start_energy_uj (int): Starting energy reading in microjoules (µJ).
+            end_energy_uj (int): Ending energy reading in microjoules (µJ).
+
+        Returns:
+            int: Energy difference in microjoules (µJ).
+        """
+        if end_energy_uj >= start_energy_uj:
+            return end_energy_uj - start_energy_uj
+        # Wraparound
+        return (self._psys_max_energy_uj - start_energy_uj) + end_energy_uj
+
     def energy_delta(
         self,
-        start_energy_uj: float,
-        end_energy_uj: float,
+        start_energy_uj: int,
+        end_energy_uj: int,
         unit: EnergyUnit = EnergyUnit.MICRO,
     ) -> float:
         """
@@ -105,17 +130,14 @@ class EnergyStatsCollector:
         handling wraparound using the hardware-reported maximum.
 
         Args:
-            start_energy_uj (float): Starting energy reading in microjoules (µJ).
-            end_energy_uj (float): Ending energy reading in microjoules (µJ).
+            start_energy_uj (int): Starting energy reading in microjoules (µJ).
+            end_energy_uj (int): Ending energy reading in microjoules (µJ).
             unit (EnergyUnit): Desired output unit (J, mJ, µJ). Default = µJ.
 
         Returns:
             float: Energy difference in the requested unit.
         """
-        if end_energy_uj >= start_energy_uj:
-            delta_uj = end_energy_uj - start_energy_uj
-        else:
-            delta_uj = (self._psys_max_energy_uj - start_energy_uj) + end_energy_uj
+        delta_uj = self.energy_delta_uj(start_energy_uj=start_energy_uj, end_energy_uj=end_energy_uj)
 
         if unit == EnergyUnit.UNIT:
             return delta_uj / 1e6

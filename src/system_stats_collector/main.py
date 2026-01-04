@@ -133,14 +133,14 @@ class SystemStatsCollector:
         timestamp = DatetimeHelper.current_datetime(from_the_epoch=True)
         return timestamp
 
-    def get_energy_consumption(self) -> Optional[float]:
+    def get_energy_consumption(self) -> Optional[int]:
         """
         Get the cumulative energy reading in µJoules.
 
         This value is NOT per process.
 
         Returns:
-            Optional[float]: Cumulative energy in µJ. None on failure.
+            Optional[int]: Cumulative energy in µJ. None on failure.
         """
         try:
             return self._energy_collector.read_energy()

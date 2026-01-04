@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import csv
 
@@ -89,7 +89,12 @@ class StatsCleaner:
 
     def normalize_consumed_energy(self) -> None:
         """
-        Recompute the consumed energy values using the first row as the baseline.
+        Recompute the consumed energy values as cumulative energy since the first sample.
+
+        The raw "energy_consumed" column in the stats file contains the raw RAPL energy
+        counter read from sysfs (µJ). This counter wraps at max_energy_range_uj.
+        To robustly handle long runs (including multiple wraparounds), we compute
+        deltas between consecutive samples and accumulate them.
 
         Returns:
             None
@@ -102,26 +107,44 @@ class StatsCleaner:
         if "energy_consumed" not in self._file_columns:
             self._file_columns.append("energy_consumed")
 
-        # Initialize missing/empty energy values to zero and coerce to float
-        for row in self._rows_stats:
-            value = row.get("energy_consumed", "")
-            if value is None or str(value).strip() == "":
-                row["energy_consumed"] = 0.0
-            else:
-                try:
-                    row["energy_consumed"] = float(value)
-                except Exception:
-                    row["energy_consumed"] = 0.0
+        def parse_energy_uj(value) -> Optional[int]:
+            if value is None:
+                return None
+            text = str(value).strip()
+            if text == "":
+                return None
+            try:
+                # Raw values are written as ints, but tolerate floats/strings.
+                return int(float(text))
+            except Exception:
+                return None
 
-        # Use the first row's value as the baseline
-        baseline_energy = float(self._rows_stats[0]["energy_consumed"])
-        # Recompute deltas
         energy_collector = EnergyStatsCollector()
-        for row in self._rows_stats:
-            current_energy = float(row["energy_consumed"])
-            row["energy_consumed"] = energy_collector.energy_delta(start_energy_uj=baseline_energy, end_energy_uj=current_energy, unit=EnergyUnit.UNIT)
-        # First row must be exactly zero
-        self._rows_stats[0]["energy_consumed"] = 0.0
+        try:
+            rows_sorted = sorted(self._rows_stats, key=lambda row: float(row["uptime"]))
+
+            prev_energy_uj: Optional[int] = None
+            cumulative_energy_uj = 0
+
+            for row in rows_sorted:
+                current_energy_uj = parse_energy_uj(row.get("energy_consumed"))
+                if current_energy_uj is None:
+                    row["energy_consumed"] = cumulative_energy_uj / 1e6
+                    continue
+
+                if prev_energy_uj is None:
+                    prev_energy_uj = current_energy_uj
+                    row["energy_consumed"] = 0.0
+                    continue
+
+                cumulative_energy_uj += energy_collector.energy_delta_uj(
+                    start_energy_uj=prev_energy_uj,
+                    end_energy_uj=current_energy_uj,
+                )
+                prev_energy_uj = current_energy_uj
+                row["energy_consumed"] = cumulative_energy_uj / 1e6
+        finally:
+            energy_collector.close()
 
 
     def run(self, output_csv_path: str, process_creation_time: float) -> None:
