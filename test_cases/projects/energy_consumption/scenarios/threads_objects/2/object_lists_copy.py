@@ -58,8 +58,7 @@ def run_object_list_benchmark(records: List[str], num_workers: int) -> List[str]
         }
         for future in concurrent.futures.as_completed(futures):
             start_index, end_index = futures[future]
-            uppercased = future.result()
-            final_records[start_index:end_index] = uppercased
+            final_records[start_index:end_index] = future.result()
     return final_records
 
 
@@ -82,5 +81,5 @@ if __name__ == "__main__":
     time.sleep(3)
 
     set_tag("start_object_lists")
-    final_records = run_object_list_benchmark(records=records, num_workers=num_workers)
+    _ = run_object_list_benchmark(records=records, num_workers=num_workers)
     set_tag("finish_object_lists")
