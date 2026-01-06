@@ -17,14 +17,20 @@ for w in "${workers[@]}"; do
   sleep 5
 done
 
-# Text tokenize
+# Shared list
 for w in "${workers[@]}"; do
-  python3 -m src.main --file_to_run test_cases.projects.energy_consumption.scenarios.threads_objects.1.object_lists_nocopy --is_module --script_args --num_records 50000000 --num_workers "$w" --run_idx "$RUN_ID"
+  python3 -m src.main --file_to_run test_cases.projects.energy_consumption.scenarios.threads_objects.1.object_lists_nocopy --is_module --script_args --num_records 80000000 --num_workers "$w" --run_idx "$RUN_ID"
+  sleep 5
+done
+
+# Copied list
+for w in "${workers[@]}"; do
+  python3 -m src.main --file_to_run test_cases.projects.energy_consumption.scenarios.threads_objects.2.object_lists_copy --is_module --script_args --num_records 80000000 --num_workers "$w" --run_idx "$RUN_ID"
   sleep 5
 done
 
 # Object lists
 for w in "${workers[@]}"; do
-  python3 -m src.main --file_to_run test_cases.projects.energy_consumption.scenarios.threads_objects.2.object_lists --is_module --script_args --num_records 8000000 --num_workers "$w" --run_idx "$RUN_ID"
+  python3 -m src.main --file_to_run test_cases.projects.energy_consumption.scenarios.threads_objects.3.object_lists --is_module --script_args --num_records 8000000 --num_workers "$w" --run_idx "$RUN_ID"
   sleep 5
 done
