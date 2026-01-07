@@ -207,6 +207,9 @@ def _compute_per_run_ratios(df: pd.DataFrame, variant_column: str) -> pd.DataFra
         # anchor identifiers
         row = {variant_column: variant_value, "run_id": run_id}
         for metric in metric_columns:
+            # raw values for traceability
+            row[f"{metric}_gil"] = gil_stats[metric]
+            row[f"{metric}_nogil"] = nogil_stats[metric]
             denom = gil_stats[metric]
             ratio = (nogil_stats[metric] / denom) if denom else None
             row[f"{metric}_ratio_nogil_over_gil"] = ratio
@@ -236,6 +239,13 @@ def _compute_ratio_confidence(per_run_ratios: pd.DataFrame, variant_column: str)
         for metric_col in metric_columns:
             # ignore zeros/negatives
             log_values = group[metric_col].apply(lambda val: math.log(val) if val and val > 0 else None).dropna()
+            base_metric = metric_col.replace("_ratio_nogil_over_gil", "")
+            diff_col = f"{base_metric}_diff_nogil_minus_gil"
+            max_diff = None
+            if diff_col in group.columns:
+                diff_values = group[diff_col].dropna()
+                if not diff_values.empty:
+                    max_diff = diff_values.abs().max()
             mean_log = log_values.mean()
             sd_log = log_values.std(ddof=1) if len(log_values) > 1 else 0.0
             se_log = sd_log / math.sqrt(len(log_values)) if len(log_values) else 0.0
@@ -246,14 +256,15 @@ def _compute_ratio_confidence(per_run_ratios: pd.DataFrame, variant_column: str)
             rows.append(
                 {
                     variant_column: variant_value,
-                    "metric": metric_col.replace("_ratio_nogil_over_gil", ""),
+                    "metric": base_metric,
                     "ci_low": math.exp(ci_low_log),
                     "ci_high": math.exp(ci_high_log),
                     "geo_mean_ratio": math.exp(mean_log),
+                    "max_diff": max_diff,
                 }
             )
     return (
-        pd.DataFrame(rows)[[variant_column, "metric", "ci_low", "ci_high", "geo_mean_ratio"]]
+        pd.DataFrame(rows)[[variant_column, "metric", "ci_low", "ci_high", "geo_mean_ratio", "max_diff"]]
         .sort_values(by=[variant_column, "metric"])
         .reset_index(drop=True)
     )
@@ -269,9 +280,29 @@ def _write_ratio_outputs(df_combined: pd.DataFrame, variant_column: str, base_na
     ratios_clean = per_run[ratio_cols].sort_values(by=[variant_column, "run_id"]).reset_index(drop=True)
     metric_names = ["uptime", "cpu_usage", "energy_delta", "power_avg", "vms", "ram", "cores_disparity"]
     ordered_cols = [variant_column, "run_id"]
+
+    def _cv(series: pd.Series) -> pd.Series:
+        mean_val = series.mean()
+        if not mean_val:
+            return pd.Series([None] * len(series), index=series.index)
+        return series.std(ddof=1) / mean_val
+
     for metric in metric_names:
+        gil_col = f"{metric}_gil"
+        nogil_col = f"{metric}_nogil"
         ratio_col = f"{metric}_ratio_nogil_over_gil"
         diff_col = f"{metric}_diff_nogil_minus_gil"
+        # Include raw values in summary
+        ordered_cols.extend([col_name for col_name in (gil_col, nogil_col) if col_name in ratios_clean.columns])
+        # Add per-variant averages and coefficients of variation for raw values
+        if gil_col in ratios_clean.columns:
+            ratios_clean[f"{gil_col}_avg"] = ratios_clean.groupby(variant_column)[gil_col].transform("mean")
+            ratios_clean[f"{gil_col}_cv"] = ratios_clean.groupby(variant_column)[gil_col].transform(_cv)
+            ordered_cols.extend([f"{gil_col}_avg", f"{gil_col}_cv"])
+        if nogil_col in ratios_clean.columns:
+            ratios_clean[f"{nogil_col}_avg"] = ratios_clean.groupby(variant_column)[nogil_col].transform("mean")
+            ratios_clean[f"{nogil_col}_cv"] = ratios_clean.groupby(variant_column)[nogil_col].transform(_cv)
+            ordered_cols.extend([f"{nogil_col}_avg", f"{nogil_col}_cv"])
         if ratio_col in ratios_clean.columns:
             # scalar ratio
             ratios_clean[f"{metric}_ratio"] = ratios_clean[ratio_col]
