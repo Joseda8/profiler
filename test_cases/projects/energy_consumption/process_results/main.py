@@ -63,16 +63,14 @@ def _aggregate_file_row(file_stats: FileStats, task_label: str, start_label: str
 
     try:
         # keyed by task label
-        uptime_by_task = file_stats.get_times(start_label="start_", finish_label="finish_")
-        # focused on the task of interest
-        uptime = uptime_by_task[task_label]
+        uptime = file_stats.get_times(start_label="start_", finish_label="finish_")[task_label]
 
-        # mean metrics
-        cpu_usage, vms, ram, _swap = file_stats.get_average_between_labels(start_label=start_label, finish_label=finish_label)
-        # std dev for CVs
-        cpu_usage_std, vms_std, ram_std = file_stats.get_std_between_labels(start_label=start_label, finish_label=finish_label)
-        # peak energy within window
-        *_, energy_min, energy_max = file_stats.get_min_max_memory_stats(start_label=start_label, finish_label=finish_label)
+        # mean CPU usage
+        cpu_usage, _, _, _ = file_stats.get_average_between_labels(start_label=start_label, finish_label=finish_label)
+        # std dev for CPU usage CV
+        cpu_usage_std, _, _ = file_stats.get_std_between_labels(start_label=start_label, finish_label=finish_label)
+        # peak memory and energy within window
+        _, max_vms, _, max_ram, _, max_swap, energy_min, energy_max = file_stats.get_min_max_memory_stats(start_label=start_label, finish_label=finish_label)
         energy_delta = energy_max - energy_min
         power_avg = (energy_delta / uptime) if uptime else None
         # imbalance across cores
@@ -88,8 +86,9 @@ def _aggregate_file_row(file_stats: FileStats, task_label: str, start_label: str
         cpu_usage, _cv(cpu_usage_std, cpu_usage),
         energy_delta,
         power_avg,
-        vms, _cv(vms_std, vms),
-        ram, _cv(ram_std, ram),
+        max_vms,
+        max_ram,
+        max_swap,
         cores_disparity_avg,
     ]
 
@@ -131,7 +130,7 @@ def stage_aggregate(files_stats: List[FileStats], output_path: str, task_label: 
     run_root = _run_root_from_output_path(output_path)
 
     # Define output schema and build rows for each input stats file
-    columns = [variant_column, "flavor", "run_id", "uptime", "cpu_usage", "cpu_usage_cv", "energy_delta", "power_avg", "vms", "vms_cv", "ram", "ram_cv", "cores_disparity"]
+    columns = [variant_column, "flavor", "run_id", "uptime", "cpu_usage", "cpu_usage_cv", "energy_delta", "power_avg", "vms", "ram", "swap", "cores_disparity"]
     rows = [
         _aggregate_file_row(file_stats=file_stats, task_label=task_label, start_label=start_label, finish_label=finish_label, variant_regex=variant_regex, run_id=run_id)
         for file_stats in files_stats
@@ -194,7 +193,7 @@ def _write_normalized(df: pd.DataFrame, output_path: str, variant_column: str, n
 
 def _compute_per_run_ratios(df: pd.DataFrame, variant_column: str) -> pd.DataFrame:
     # Build a row per (run_id, variant) with nogil/gil ratios, diffs, and logs
-    metric_columns = [col for col in ["uptime", "cpu_usage", "energy_delta", "power_avg", "vms", "ram", "cores_disparity"] if col in df.columns]
+    metric_columns = [col for col in ["uptime", "cpu_usage", "energy_delta", "power_avg", "vms", "ram", "swap", "cores_disparity"] if col in df.columns]
 
     rows = []
     for (run_id, variant_value), group in df.groupby(["run_id", variant_column]):
@@ -210,8 +209,10 @@ def _compute_per_run_ratios(df: pd.DataFrame, variant_column: str) -> pd.DataFra
             # raw values for traceability
             row[f"{metric}_gil"] = gil_stats[metric]
             row[f"{metric}_nogil"] = nogil_stats[metric]
-            denom = gil_stats[metric]
-            ratio = (nogil_stats[metric] / denom) if denom else None
+            if gil_stats[metric] == 0 and nogil_stats[metric] == 0:
+                ratio = 1.0
+            else:
+                ratio = (nogil_stats[metric] / gil_stats[metric]) if gil_stats[metric] else None
             row[f"{metric}_ratio_nogil_over_gil"] = ratio
             row[f"{metric}_diff_nogil_minus_gil"] = abs(nogil_stats[metric] - gil_stats[metric])
             row[f"{metric}_log_ratio_nogil_over_gil"] = math.log(ratio) if ratio and ratio > 0 else None
@@ -278,7 +279,7 @@ def _write_ratio_outputs(df_combined: pd.DataFrame, variant_column: str, base_na
     # drop log helpers for CSV
     ratio_cols = [col for col in per_run.columns if not col.endswith("_log_ratio_nogil_over_gil")]
     ratios_clean = per_run[ratio_cols].sort_values(by=[variant_column, "run_id"]).reset_index(drop=True)
-    metric_names = ["uptime", "cpu_usage", "energy_delta", "power_avg", "vms", "ram", "cores_disparity"]
+    metric_names = ["uptime", "cpu_usage", "energy_delta", "power_avg", "vms", "ram", "swap", "cores_disparity"]
     ordered_cols = [variant_column, "run_id"]
 
     def _cv(series: pd.Series) -> pd.Series:
@@ -320,7 +321,7 @@ def _write_ratio_outputs(df_combined: pd.DataFrame, variant_column: str, base_na
     )
 
     ratio_confidence = _compute_ratio_confidence(per_run_ratios=per_run, variant_column=variant_column)
-    metric_order = ["uptime", "cpu_usage", "energy_delta", "power_avg", "vms", "ram", "cores_disparity"]
+    metric_order = ["uptime", "cpu_usage", "energy_delta", "power_avg", "vms", "ram", "swap", "cores_disparity"]
     ratio_confidence["metric"] = pd.Categorical(ratio_confidence["metric"], categories=metric_order, ordered=True)
     ratio_confidence.sort_values(by=[variant_column, "metric"]).reset_index(drop=True).to_csv(
         os.path.join(ratios_dir, f"{os.path.splitext(base_name)[0]}_ratio_confidence.csv"),
@@ -346,6 +347,7 @@ def _plot_combined_graphs(summary_path: str, variant_column: str, global_root: s
     plotter.plot_lines(x_column=variant_column, y_columns=["power_avg"], title="Power vs Variant (runs)")
     plotter.plot_lines(x_column=variant_column, y_columns=["vms"], title="VMS vs Variant (runs)")
     plotter.plot_lines(x_column=variant_column, y_columns=["ram"], title="RAM vs Variant (runs)")
+    plotter.plot_lines(x_column=variant_column, y_columns=["swap"], title="Swap vs Variant (runs)")
 
 
 def _infer_base_root(output_file: str) -> str:
