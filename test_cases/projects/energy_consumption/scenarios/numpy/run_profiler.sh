@@ -10,19 +10,19 @@ else
 fi
 
 # NumPy vectorized lengths
-for length in 150000000 200000000 250000000 300000000 350000000 400000000 450000000; do
+for length in 150000000 170000000 190000000 210000000 230000000 250000000 275000000; do
   python3 -m src.main --file_to_run test_cases.projects.energy_consumption.scenarios.numpy.0.numpy_vectorized --is_module --script_args --length "$length" --run_idx "$RUN_ID"
-  sleep 5
+  sleep 60
 done
 
 # NumPy BLAS sizes
 for size in 6000 7500 9000 10500 12000 13500 15000; do
   python3 -m src.main --file_to_run test_cases.projects.energy_consumption.scenarios.numpy.1.numpy_blas --is_module --script_args --size "$size" --run_idx "$RUN_ID"
-  sleep 5
+  sleep 60
 done
 
 # NumPy FFT lengths
-for length in 50000000 100000000 150000000 200000000 250000000 300000000 350000000; do
+for length in 50000000 75000000 100000000 125000000 150000000 175000000 200000000; do
   python3 -m src.main --file_to_run test_cases.projects.energy_consumption.scenarios.numpy.2.numpy_fft --is_module --script_args --length "$length" --run_idx "$RUN_ID"
-  sleep 5
+  sleep 60
 done

@@ -14,23 +14,23 @@ workers=(1 2 4 6 8 12)
 # JSON parse
 for w in "${workers[@]}"; do
   python3 -m src.main --file_to_run test_cases.projects.energy_consumption.scenarios.threads_objects.0.json_parse --is_module --script_args --num_records 2000000 --num_workers "$w" --run_idx "$RUN_ID"
-  sleep 5
+  sleep 60
 done
 
 # Shared list
 for w in "${workers[@]}"; do
-  python3 -m src.main --file_to_run test_cases.projects.energy_consumption.scenarios.threads_objects.1.object_lists_nocopy --is_module --script_args --num_records 80000000 --num_workers "$w" --run_idx "$RUN_ID"
-  sleep 5
+  python3 -m src.main --file_to_run test_cases.projects.energy_consumption.scenarios.threads_objects.1.object_lists_nocopy --is_module --script_args --num_records 55000000 --num_workers "$w" --run_idx "$RUN_ID"
+  sleep 60
 done
 
 # Copied list
 for w in "${workers[@]}"; do
-  python3 -m src.main --file_to_run test_cases.projects.energy_consumption.scenarios.threads_objects.2.object_lists_copy --is_module --script_args --num_records 80000000 --num_workers "$w" --run_idx "$RUN_ID"
-  sleep 5
+  python3 -m src.main --file_to_run test_cases.projects.energy_consumption.scenarios.threads_objects.2.object_lists_copy --is_module --script_args --num_records 55000000 --num_workers "$w" --run_idx "$RUN_ID"
+  sleep 60
 done
 
 # Object lists
 for w in "${workers[@]}"; do
   python3 -m src.main --file_to_run test_cases.projects.energy_consumption.scenarios.threads_objects.3.object_lists --is_module --script_args --num_records 8000000 --num_workers "$w" --run_idx "$RUN_ID"
-  sleep 5
+  sleep 60
 done
