@@ -42,7 +42,6 @@ def build_payloads(num_records: int) -> List[str]:
                 "active": (idx % 3) == 0,
                 "scores": {"math": (idx % 50) / 10, "lang": (idx % 40) / 10},
                 "tags": [f"tag{idx % 5}", f"group{idx % 7}"],
-                "meta": {"source": "synthetic", "epoch": idx // 1000},
             }
         )
         for idx in range(num_records)
@@ -67,7 +66,6 @@ def parse_slice(start_index: int, end_index: int, payloads: List[str]) -> None:
         age = int(record.get("dob", {}).get("age", 0))
         tags = record.get("tags", [])
         scores = record.get("scores", {})
-        meta = record.get("meta", {}).copy()
 
         # Bucket by age decade
         bucket = age // 10

@@ -36,29 +36,34 @@ def build_strings(num_records: int) -> List[str]:
     return [f"name{idx} middleName{idx} surname{idx}" for idx in range(num_records)]
 
 
-def process_slice_copy(start_index: int, end_index: int, records: List[str]) -> List[str]:
+def process_slice_copy(start_index: int, end_index: int, records: List[str]) -> Tuple[int, List[str]]:
     """
-    Copy and transform a list slice without mutating the shared base list:
-    - Copy the assigned slice.
-    - Uppercase every string in the copy.
+    Copy and transform a slice without mutating the shared base list.
+    Returns (start_index, transformed_slice).
     """
-    slice_copy = records[start_index:end_index]
-    uppercased = [value.upper() for value in slice_copy]
+    local_records = [None] * (end_index - start_index)
 
-    return uppercased
+    for idx in range(start_index, end_index):
+        original = records[idx]
+        local_records[idx - start_index] = original.upper()
+
+    return start_index, local_records
 
 
 def run_object_list_benchmark(records: List[str], num_workers: int) -> List[str]:
-    """Run slice-copy string uppercasing across threads over disjoint slices and reassemble."""
-    final_records = [""] * len(records)
+    """Run slice-copy string uppercasing across threads and reassemble output."""
+    final_records = [None] * len(records)
+
     with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
-        futures = {
-            executor.submit(process_slice_copy, start_index, end_index, records): (start_index, end_index)
+        futures = [
+            executor.submit(process_slice_copy, start_index, end_index, records)
             for start_index, end_index in chunk_indices(len(records), num_workers)
-        }
+        ]
+
         for future in concurrent.futures.as_completed(futures):
-            start_index, end_index = futures[future]
-            final_records[start_index:end_index] = future.result()
+            start_index, local_records = future.result()
+            final_records[start_index:start_index + len(local_records)] = local_records
+
     return final_records
 
 
