@@ -1,9 +1,7 @@
 # System Profiler
 ## _Collect and record the behavior of a program_
 
-This profilers is a Python-based tool designed to measure the performance and resource usage of a program. Right now it supports the profiling of Python programs as scripts or modules.
-
-It collects various system statistics such as CPU usage, memory usage and execution time.
+This profiler is a Python-based tool designed to measure the performance and resource usage of a program. Right now it supports the profiling of Python programs as scripts or modules.
 
 The profiler collects stats with an ideal sampling rate of 50ms. Also, since it triggers the process to profile without being part of it, the profiling process has a very low overhead.
 
@@ -11,15 +9,14 @@ The profiler collects stats with an ideal sampling rate of 50ms. Also, since it 
 
 ## Features
 
-- **Performance Measurement**: The profiler gathers the next system metrics:
+- **Performance Measurement**: The profiler collects the next system metrics:
     - Execution time.
     - CPU usage.
-    - CPU usage per core (of the whole system and not only of the process to profile).
-    - RAM usage.
-    - Virtual memory usage.
-    - Swap usage.
-    - Energy consumption (system-wide cumulative energy counter via Intel RAPL / `powercap-info v0.6.0-1`).
-    - CPU package temperature (from `coretemp` sensors when available).
+    - CPU usage per core (system-wide stat).
+    - RSS.
+    - VMS.
+    - Swap.
+    - Energy consumption (system-wide cumulative energy counter via Intel RAPL).
 - **Detailed Reports**: Profiling results are saved in CSV format to facilitate post-processing analysis. Additionally, the standard output of the program is captured and stored in a text file.
 - **Post-processing interface**: The profiler contains an interface offering some tools to process the CSV file obtained from the profiling process.
 
@@ -38,26 +35,46 @@ python3 -m src.main --file_to_run <file_or_module_name> [--is_module] [--script_
 For example:
 
 ```bash
-python3 -m src.main --file_to_run test_cases.projects.pandas.scenarios.0.data_frame --is_module --script_args --num_records 1000000
+python3 -m src.main --file_to_run test_cases.projects.general.0.sleep --is_module
 ```
 
 ## Energy measurements
-
-Energy measurements rely on Intel RAPL counters exposed through `powercap-info` (provided by the `powercap-utils` package).
-By default, reading these counters requires root privileges. To avoid running the profiler with `sudo`, you can allow your user to run `powercap-info` without a password (tested on `Linux/Ubuntu 24.04.3 LTS`):
+Energy measurements rely on Intel RAPL via the Linux sysfs interface. By default, reading these counters requires root privileges. To avoid running the profiler with `sudo`, you can configure persistent read access to Intel RAPL energy counters (tested on `Linux/Ubuntu 24.04.3 LTS`).
 
 Run:
 
 ```bash
-sudo visudo
+# Create "power" group if it does not exist
+getent group power || sudo groupadd power
+getent group power
+
+# Add current user to the group
+sudo usermod -aG power $USER
+groups | grep power
 ```
 
-Add a line:
+Create tmpfiles rule:
 
+```bash
+sudo nano /etc/tmpfiles.d/intel-rapl.conf
+
+# Add the line
+z /sys/class/powercap/intel-rapl:*/energy_uj 0444 root power -
 ```
-yourusername ALL=(ALL) NOPASSWD: /usr/bin/powercap-info
+
+Then run and verify these outputs:
+
+```bash
+sudo cat /etc/tmpfiles.d/intel-rapl.conf
+sudo systemd-tmpfiles --create
+
+# Verify permissions
+ls -l /sys/class/powercap/intel-rapl:1/energy_uj
+
+# Read energy counter
+cat /sys/class/powercap/intel-rapl:1/energy_uj
 ```
 
 ## Examples
 
-Check the `test_cases` folder for more elaborated examples using the profiler.
+Check the `test_cases` folder for some examples using the profiler.
